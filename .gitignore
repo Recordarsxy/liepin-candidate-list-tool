@@ -1,0 +1,59 @@
+# Local secrets and environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+secrets*.json
+
+# Candidate data and exports
+data/
+exports/
+candidate-data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.csv
+*.tsv
+*.xlsx
+*.xls
+
+# Logs and runtime state
+logs/
+*.log
+runtime/
+state/
+artifacts/
+
+# Extension and JavaScript build output
+extension/node_modules/
+extension/dist/
+extension/coverage/
+node_modules/
+dist/
+coverage/
+
+# Python build output and virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+*.egg-info/
+
+# Packaged applications
+release/
+*.exe
+*.msi
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
