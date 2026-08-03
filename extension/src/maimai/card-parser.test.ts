@@ -67,7 +67,7 @@ describe("Maimai card parser", () => {
     expect(findMaimaiCommunicationAction(cards[0])?.className).toBe("ordinary");
   });
 
-  it("rejects a nested communication label whose parent has additional visible text", () => {
+  it("accepts an exact nested communication label even when its parent has extra text", () => {
     document.body.innerHTML = `
       <section class="candidate-row">
         <strong>王先生</strong><span>29岁</span><span>北京</span>
@@ -77,8 +77,54 @@ describe("Maimai card parser", () => {
       </section>`;
     const row = document.querySelector<HTMLElement>(".candidate-row")!;
 
-    expect(findMaimaiCommunicationAction(row)).toBeNull();
-    expect(findMaimaiCards(document)).toEqual([]);
+    expect(findMaimaiCommunicationAction(row)?.className).toBe("label");
+    expect(findMaimaiCards(document)).toHaveLength(1);
+  });
+
+  it("accepts exact span and paragraph communication actions without tag requirements", () => {
+    document.body.innerHTML = `
+      <section><strong>王先生</strong><span class="span-action">沟通</span></section>
+      <section><strong>李女士</strong><p class="paragraph-action">立即沟通</p></section>`;
+
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(2);
+    expect(findMaimaiCommunicationAction(cards[0])?.className).toBe("span-action");
+    expect(findMaimaiCommunicationAction(cards[1])?.className).toBe("paragraph-action");
+  });
+
+  it("returns every exact communication action when actions share a parent", () => {
+    document.body.innerHTML = `
+      <div class="shared-actions">
+        <span class="first-action">沟通</span>
+        <span class="second-action">立即沟通</span>
+      </div>`;
+
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(2);
+    expect(cards.map((card) => card.className)).toEqual([
+      "first-action",
+      "second-action",
+    ]);
+  });
+
+  it("does not borrow a name from another candidate row", () => {
+    document.body.innerHTML = `
+      <div class="candidate-list">
+        <section class="anonymous-row"><div class="first-action">沟通</div></section>
+        <section class="named-row">
+          <strong>李女士</strong>
+          <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
+          <div class="second-action">立即沟通</div>
+        </section>
+      </div>`;
+
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(2);
+    expect(parseMaimaiCard(cards[0])).toBeNull();
+    expect(parseMaimaiCard(cards[1])).toMatchObject({ name: "李女士" });
   });
 
   it("parses visible profile, expectation, and history fields", () => {
@@ -191,7 +237,7 @@ describe("Maimai card parser", () => {
     const cards = findMaimaiCards(document);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].className).toBe("visible-row");
+    expect(cards[0].textContent).toBe("立即沟通");
   });
 
   it("excludes fields hidden by ancestor display, visibility, and stylesheet rules", () => {

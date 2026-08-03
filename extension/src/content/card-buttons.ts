@@ -12,6 +12,7 @@ type Options = {
 const BUTTON_ATTRIBUTE = "data-candidate-collector-button";
 const SELECTED_ATTRIBUTE = "data-candidate-collector-selected";
 const BATCH_ATTRIBUTE = "data-candidate-collector-batch";
+const MOUNTED_ATTRIBUTE = "data-candidate-collector-mounted";
 
 export function installCardButtons(options: Options): () => void {
   const selection = new PageBatchSelection();
@@ -55,7 +56,12 @@ export function installCardButtons(options: Options): () => void {
 
   const scan = () => {
     for (const card of options.findCards(options.root)) {
-      if (card.querySelector(`[${BUTTON_ATTRIBUTE}]`)) continue;
+      if (
+        card.hasAttribute(MOUNTED_ATTRIBUTE) ||
+        card.querySelector(`[${BUTTON_ATTRIBUTE}]`)
+      ) {
+        continue;
+      }
       const button = options.root.createElement("button");
       button.type = "button";
       button.setAttribute(BUTTON_ATTRIBUTE, "true");
@@ -83,6 +89,7 @@ export function installCardButtons(options: Options): () => void {
       });
       if (options.mountButton) options.mountButton(card, button);
       else card.append(button);
+      card.setAttribute(MOUNTED_ATTRIBUTE, "true");
     }
   };
 
@@ -95,6 +102,9 @@ export function installCardButtons(options: Options): () => void {
     options.root
       .querySelectorAll(`[${BUTTON_ATTRIBUTE}]`)
       .forEach((button) => button.remove());
+    options.root
+      .querySelectorAll(`[${MOUNTED_ATTRIBUTE}]`)
+      .forEach((card) => card.removeAttribute(MOUNTED_ATTRIBUTE));
   };
 }
 

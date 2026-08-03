@@ -24,16 +24,17 @@ type HistoryRow = {
 };
 
 export function findMaimaiCommunicationAction(card: HTMLElement): HTMLElement | null {
+  if (
+    isVisible(card) &&
+    COMMUNICATION_TEXTS.has(visibleTextFromNodes(card))
+  ) {
+    return card;
+  }
   return visibleCommunicationActions(card)[0] ?? null;
 }
 
 export function findMaimaiCards(root: ParentNode): HTMLElement[] {
-  const cards: HTMLElement[] = [];
-  for (const action of visibleCommunicationActions(root)) {
-    const mount = action.parentElement ?? action;
-    if (!cards.includes(mount)) cards.push(mount);
-  }
-  return cards;
+  return visibleCommunicationActions(root);
 }
 
 export function parseMaimaiCard(card: HTMLElement): CandidateDraft | null {
@@ -84,6 +85,13 @@ function findProfileName(tokens: string[]): string {
 
 function findNamedCandidateRoot(start: HTMLElement): HTMLElement {
   for (let candidate: HTMLElement | null = start; candidate; candidate = candidate.parentElement) {
+    if (candidate.matches("body,html")) break;
+    if (
+      candidate !== start &&
+      visibleCommunicationActions(candidate).length > 1
+    ) {
+      break;
+    }
     if (findProfileName(visibleLeafTexts(candidate))) return candidate;
   }
   return start;
@@ -170,6 +178,7 @@ function findHistoryRows(card: HTMLElement): HistoryRow[] {
 function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
   const document = root instanceof Document ? root : root.ownerDocument;
   if (!document) return [];
+  const boundary = root instanceof Document ? root.documentElement : root;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const actions: HTMLElement[] = [];
 
@@ -186,16 +195,18 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
     }
 
     let action = parent;
-    let acceptsExactLabel = true;
-    while (action.parentElement && action.parentElement !== root) {
+    while (
+      action.parentElement &&
+      action !== boundary &&
+      action.parentElement !== boundary
+    ) {
       if (hasIndependentVisibleSibling(action)) break;
+      if (action.parentElement.matches("body,html")) break;
       if (visibleTextFromNodes(action.parentElement) !== label) {
-        acceptsExactLabel = isCommunicationControlElement(action);
         break;
       }
       action = action.parentElement;
     }
-    if (!acceptsExactLabel) continue;
     if (!actions.includes(action)) actions.push(action);
   }
 
@@ -212,10 +223,6 @@ function visibleTextFromNodes(element: HTMLElement): string {
   }
 
   return texts.join(" ");
-}
-
-function isCommunicationControlElement(element: HTMLElement): boolean {
-  return element.matches("button,a,div,[role='button'],[role='link']");
 }
 
 function hasIndependentVisibleSibling(element: HTMLElement): boolean {

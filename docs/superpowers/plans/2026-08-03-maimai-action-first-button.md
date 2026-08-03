@@ -4,7 +4,7 @@
 
 **Goal:** Always mount one collection button beside every visible exact Maimai communication action, then parse candidate data on click with missing fields left blank.
 
-**Architecture:** Separate action discovery from candidate parsing. `findMaimaiCards` returns the communication action's mounting container without checking candidate fields; `parseMaimaiCard` climbs from that container to the nearest ancestor containing a reliable name before applying existing best-effort field parsing.
+**Architecture:** Separate action discovery from candidate parsing. `findMaimaiCards` returns every exact visible communication action without checking candidate fields or element tags; the generic installer marks each returned action as mounted so siblings sharing a parent stay distinct. `parseMaimaiCard` climbs from that action to the nearest named ancestor, stopping at shared multi-action containers, before applying existing best-effort field parsing.
 
 **Tech Stack:** Chrome MV3, TypeScript, Vitest, jsdom, Vite
 
@@ -22,6 +22,7 @@
 **Files:**
 - Modify: `extension/src/maimai/card-parser.test.ts`
 - Modify: `extension/src/content/maimai.test.ts`
+- Modify: `extension/src/content/card-buttons.ts`
 - Modify: `extension/src/maimai/card-parser.ts`
 
 **Interfaces:**
@@ -30,7 +31,7 @@
 
 - [ ] **Step 1: Write the failing tests**
 
-Add a parser/content fixture containing only a reliable candidate name and an exact visible `立即沟通` action. Assert one mounting container is found, the action is returned, the content script inserts exactly one `加入批量` before it, and clicking selects a draft whose missing values remain empty.
+Add parser/content fixtures containing: a name-only row; exact `span`/`p` actions; two actions sharing one parent; and adjacent anonymous/named rows. Assert every action receives one button, missing fields remain empty, and the anonymous row cannot borrow the next row's name.
 
 - [ ] **Step 2: Run focused tests to verify RED**
 
@@ -44,7 +45,7 @@ Expected: the new no-marker row assertions fail because `findMaimaiCards` curren
 
 - [ ] **Step 3: Implement the minimal action-first behavior**
 
-In `visibleCommunicationActions`, stop requiring `hasCandidateSignature` when the exact-label action reaches an ancestor with different text. In `findMaimaiCards`, return the action's mounting parent without inspecting candidate fields. Add a resolver used by `parseMaimaiCard` that climbs to the nearest ancestor with a reliable profile name, and exclude communication labels from name candidates. Relax the final parse guard to require only a reliable name; keep missing work and education fields empty.
+In `visibleCommunicationActions`, stop requiring `hasCandidateSignature` or element tags. In `findMaimaiCards`, return every exact action element. Mark each source action with `data-candidate-collector-mounted` in the generic installer so sibling actions do not collapse or receive duplicates. Add a resolver used by `parseMaimaiCard` that climbs to the nearest ancestor with a reliable profile name, stops before shared multi-action containers and `body/html`, and excludes communication labels and collector UI from name candidates. Relax the final parse guard to require only a reliable name; keep missing work and education fields empty.
 
 - [ ] **Step 4: Verify focused and full GREEN**
 
@@ -62,4 +63,3 @@ Expected: all commands exit 0 and the no-marker row receives one working button.
 - [ ] **Step 5: Commit and install**
 
 Commit only the three task files plus the approved design/plan. Copy the six runtime release files (`manifest.json`, `sidepanel.html`, `dist/background.js`, `dist/content/liepin.js`, `dist/content/maimai.js`, `dist/sidepanel/app.js`) to both installed extension directories and verify 6/6 SHA-256 matches.
-

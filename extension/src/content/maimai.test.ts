@@ -50,7 +50,7 @@ describe("Maimai content script", () => {
     }
   });
 
-  it("does not mount a button for a partial nested communication label", () => {
+  it("mounts beside an exact nested communication label", () => {
     document.body.innerHTML = `
       <section>
         <strong>王先生</strong><span>29岁</span><span>北京</span>
@@ -62,7 +62,8 @@ describe("Maimai content script", () => {
 
     const dispose = installMaimaiCardButtons(document, writeText);
     try {
-      expect(document.querySelector("[data-candidate-collector-button]")).toBeNull();
+      const label = document.querySelector<HTMLElement>(".label")!;
+      expect(label.previousElementSibling).toMatchObject({ textContent: "加入批量" });
     } finally {
       dispose();
     }
@@ -115,6 +116,29 @@ describe("Maimai content script", () => {
       expect(cells[1]).toBe("王先生");
       expect(cells.slice(2, 10)).toEqual(["", "", "", "", "", "", "", ""]);
       expect(cells[10]).toBe("脉脉");
+    } finally {
+      dispose();
+    }
+  });
+
+  it("mounts one button for each exact action sharing a parent", () => {
+    document.body.innerHTML = `
+      <div class="shared-actions">
+        <span class="first-action">沟通</span>
+        <span class="second-action">立即沟通</span>
+      </div>`;
+    const dispose = installMaimaiCardButtons(document, vi.fn());
+
+    try {
+      expect(
+        document.querySelectorAll("[data-candidate-collector-button]"),
+      ).toHaveLength(2);
+      expect(
+        document.querySelector<HTMLElement>(".first-action")?.previousElementSibling,
+      ).toMatchObject({ textContent: "加入批量" });
+      expect(
+        document.querySelector<HTMLElement>(".second-action")?.previousElementSibling,
+      ).toMatchObject({ textContent: "加入批量" });
     } finally {
       dispose();
     }
