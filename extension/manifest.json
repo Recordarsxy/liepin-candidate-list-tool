@@ -2,10 +2,28 @@
   "manifest_version": 3,
   "name": "Candidate Store",
   "version": "0.1.0",
-  "description": "User-triggered visible-DOM candidate capture.",
+  "description": "将猎聘和脉脉当前可见候选卡片复制为可直接粘贴到钉钉表格的 11 列文本。",
   "action": {
-    "default_title": "Scan current page"
+    "default_title": "打开候选人复制工具"
   },
-  "permissions": ["activeTab"],
-  "host_permissions": ["http://127.0.0.1/*"]
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.liepin.com/*"],
+      "js": ["dist/content/liepin.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.maimai.cn/*"],
+      "js": ["dist/content/maimai.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["sidePanel", "storage", "clipboardWrite"]
 }
