@@ -54,6 +54,18 @@ def assess_broad_pool(
     company = capture.current_company
     combined = f"{company} {role}"
 
+    if not capture.platform_candidate_id:
+        return PoolAssessment(
+            outcome=AssessmentOutcome.NEEDS_REVIEW,
+            evidence=[
+                EvidenceItem(
+                    field="platform_candidate_id",
+                    polarity="missing",
+                    summary="a stable visible platform candidate ID is required before automatic queueing",
+                )
+            ],
+        )
+
     exclusion = _first_match(role, rules.exclusion_keywords)
     if exclusion:
         return PoolAssessment(

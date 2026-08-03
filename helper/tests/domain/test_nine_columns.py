@@ -24,7 +24,8 @@ def test_maps_the_exact_nine_column_order_without_technical_fields() -> None:
 
     assert NINE_COLUMN_FIELDS == (
         "current_company",
-        "name_gender",
+        "name",
+        "gender",
         "age",
         "current_location",
         "preferred_location",
@@ -32,7 +33,7 @@ def test_maps_the_exact_nine_column_order_without_technical_fields() -> None:
         "master_school",
         "bachelor_school",
     )
-    assert draft.fields() == ["甲银行", "已脱敏姓名", "", "上海", "北京", "机构销售", "甲大学", "乙大学"]
+    assert draft.fields() == ["甲银行", "已脱敏姓名", "", "", "上海", "北京", "机构销售", "甲大学", "乙大学"]
     assert not hasattr(draft, "platform_candidate_id")
     assert not hasattr(draft, "assessment")
 
@@ -48,4 +49,4 @@ def test_keeps_unknown_nine_column_values_empty() -> None:
         )
     )
 
-    assert draft.fields() == ["乙基金", "", "", "", "", "渠道销售", "", ""]
+    assert draft.fields() == ["乙基金", "", "", "", "", "", "渠道销售", "", ""]

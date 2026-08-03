@@ -1,4 +1,9 @@
-import { getLiepinPageState, type LiepinPausedReason } from "./page-state";
+import {
+  firstVisibleElement,
+  getLiepinPageState,
+  visibleElements,
+  type LiepinPausedReason,
+} from "./page-state";
 
 export type LiepinCareerEvidence = {
   company: string;
@@ -32,7 +37,7 @@ export function parseLiepinDocument(document: Document): LiepinParseResult {
     return pageState;
   }
 
-  const detail = document.querySelector<HTMLElement>("[data-liepin-detail]");
+  const detail = firstVisibleElement<HTMLElement>(document, "[data-liepin-detail]");
   if (detail) {
     const capture = parseDetail(detail);
     return capture
@@ -40,7 +45,10 @@ export function parseLiepinDocument(document: Document): LiepinParseResult {
       : { status: "paused", reason: "dom_mismatch" };
   }
 
-  const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-liepin-list] [data-liepin-candidate-id]"));
+  const cards = visibleElements<HTMLElement>(
+    document,
+    "[data-liepin-list] [data-liepin-candidate-id]",
+  );
   if (cards.length === 0) {
     return { status: "paused", reason: "dom_mismatch" };
   }
@@ -94,7 +102,7 @@ function educationSchools(
   company: string,
   role: string,
 ): Pick<LiepinCapture, "master_school" | "bachelor_school" | "career_evidence"> {
-  const education = Array.from(detail.querySelectorAll<HTMLElement>("[data-education-level]"));
+  const education = visibleElements<HTMLElement>(detail, "[data-education-level]");
   const values = education.reduce<Record<string, string>>((result, section) => {
     const level = section.dataset.educationLevel;
     const school = fieldText(section, "school");
@@ -120,7 +128,7 @@ function educationSchools(
 }
 
 function fieldText(container: HTMLElement, name: string): string {
-  return container.querySelector<HTMLElement>(`[data-field="${name}"]`)?.textContent?.trim() ?? "";
+  return firstVisibleElement<HTMLElement>(container, `[data-field="${name}"]`)?.textContent?.trim() ?? "";
 }
 
 function withoutEmptyFields(capture: LiepinCapture): LiepinCapture {

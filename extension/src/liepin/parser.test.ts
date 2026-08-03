@@ -94,6 +94,68 @@ describe("parseLiepinDocument", () => {
     expect(parseLiepinDocument(document)).toEqual({ status: "paused", reason });
   });
 
+  it("ignores hidden or templated login and CAPTCHA banners", () => {
+    const document = new DOMParser().parseFromString(
+      `
+        <aside hidden data-liepin-login>请登录后查看</aside>
+        <template><aside data-liepin-captcha>请完成验证码验证</aside></template>
+        <main data-liepin-list>
+          <article data-liepin-candidate-id="visible-001">
+            <span data-field="current-company">甲银行</span>
+            <span data-field="current-role">机构销售</span>
+          </article>
+        </main>
+      `,
+      "text/html",
+    );
+
+    expect(parseLiepinDocument(document)).toEqual({
+      status: "ready",
+      captures: [
+        {
+          platform: "liepin",
+          platform_candidate_id: "visible-001",
+          source_page_type: "list",
+          current_company: "甲银行",
+          current_role: "机构销售",
+          career_evidence: [],
+        },
+      ],
+    });
+  });
+
+  it("ignores hidden cards and hidden fields when extracting a visible result", () => {
+    const document = new DOMParser().parseFromString(
+      `
+        <main data-liepin-list>
+          <article hidden data-liepin-candidate-id="stale-001">
+            <span data-field="current-company">旧公司</span>
+          </article>
+          <article data-liepin-candidate-id="visible-002">
+            <span hidden data-field="current-company">旧公司</span>
+            <span data-field="current-company">乙基金</span>
+            <span data-field="current-role">机构销售</span>
+          </article>
+        </main>
+      `,
+      "text/html",
+    );
+
+    expect(parseLiepinDocument(document)).toEqual({
+      status: "ready",
+      captures: [
+        {
+          platform: "liepin",
+          platform_candidate_id: "visible-002",
+          source_page_type: "list",
+          current_company: "乙基金",
+          current_role: "机构销售",
+          career_evidence: [],
+        },
+      ],
+    });
+  });
+
   it("uses only the provided visible DOM and no network, cookie, or navigation APIs", () => {
     expect(parserSource).not.toMatch(
       /\bfetch\s*\(|XMLHttpRequest|document\.cookie|window\.location|document\.location/,

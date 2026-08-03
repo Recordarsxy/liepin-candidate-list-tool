@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, status
 from pydantic import BaseModel, ConfigDict
@@ -18,6 +19,10 @@ class QueueItemResponse(BaseModel):
     queue_kind: str
     priority: int
     status: str
+
+
+class LiepinCaptureRequest(CandidateCapture):
+    platform: Literal["liepin"]
 
 
 class CaptureResponse(BaseModel):
@@ -39,7 +44,7 @@ def create_app(database_path: Path | str) -> FastAPI:
         response_model=CaptureResponse,
         status_code=status.HTTP_201_CREATED,
     )
-    def create_liepin_capture(capture: CandidateCapture) -> CaptureResponse:
+    def create_liepin_capture(capture: LiepinCaptureRequest) -> CaptureResponse:
         assessment = assess_broad_pool(capture)
         candidate_id = repository.upsert_capture(capture, assessment)
         queue_items = queue_service.enqueue_for_pool(candidate_id, assessment)

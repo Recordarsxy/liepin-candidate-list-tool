@@ -43,6 +43,17 @@ def test_marks_ambiguous_current_role_for_review() -> None:
     assert assessment.evidence[0].polarity == "missing"
 
 
+def test_missing_stable_platform_id_forces_review_even_for_a_matching_role() -> None:
+    candidate = capture(company="某商业银行", role="机构及同业渠道销售").model_copy(
+        update={"platform_candidate_id": None}
+    )
+
+    assessment = assess_broad_pool(candidate)
+
+    assert assessment.outcome is AssessmentOutcome.NEEDS_REVIEW
+    assert assessment.evidence[0].field == "platform_candidate_id"
+
+
 def test_pool_assessment_requires_one_to_three_evidence_items() -> None:
     evidence = EvidenceItem(field="current_role", polarity="support", summary="渠道销售")
 

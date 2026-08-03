@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from candidate_store.domain.models import AssessmentOutcome, CandidateCapture, EvidenceItem, PoolAssessment
+from candidate_store.domain.models import (
+    AssessmentOutcome,
+    CandidateCapture,
+    DetailQueueItem,
+    EvidenceItem,
+    PoolAssessment,
+)
 from candidate_store.queue.service import QueueService
 from candidate_store.storage.repository import CandidateRepository
 
@@ -85,3 +91,78 @@ def test_ambiguous_candidate_requires_explicit_review_before_enrichment_queue(tm
 
     assert queue.enqueue_for_pool(candidate_id, review_assessment) == []
     assert queue.enqueue_for_pool(candidate_id, review_assessment, user_review_approved=True)[0].queue_kind == "nine_column_enrichment"
+
+
+def test_sparse_list_rescan_preserves_existing_detail_fields_and_career_evidence(tmp_path: Path) -> None:
+    repository = CandidateRepository(tmp_path / "candidate-store.sqlite3")
+    detailed = finance_sales_capture().model_copy(
+        update={"name": "脱敏姓名", "master_school": "甲大学", "bachelor_school": "乙大学"}
+    )
+    candidate_id = repository.upsert_capture(detailed, recommend_assessment())
+
+    same_candidate_id = repository.upsert_capture(
+        CandidateCapture(
+            platform="liepin",
+            platform_candidate_id="stable-123",
+            source_page_type="list",
+            current_company="甲银行",
+            current_role="机构销售",
+        ),
+        recommend_assessment(),
+    )
+    persisted = repository.get_candidate(candidate_id)
+
+    assert same_candidate_id == candidate_id
+    assert persisted["name"] == "脱敏姓名"
+    assert persisted["master_school"] == "甲大学"
+    assert persisted["bachelor_school"] == "乙大学"
+    assert persisted["career_evidence"] == [
+        {
+            "company": "甲银行",
+            "role": "机构销售",
+            "location": "上海",
+            "education_level": "master",
+            "school": "甲大学",
+            "source_field": "visible-detail",
+        }
+    ]
+
+
+def test_reenqueue_preserves_completed_queue_state(tmp_path: Path) -> None:
+    repository = CandidateRepository(tmp_path / "candidate-store.sqlite3")
+    candidate_id = repository.upsert_capture(finance_sales_capture(), recommend_assessment())
+    repository.add_queue_item(
+        candidate_id,
+        DetailQueueItem(queue_kind="nine_column_enrichment", priority=100, status="completed"),
+    )
+
+    QueueService(repository).enqueue_for_pool(candidate_id, recommend_assessment())
+
+    assert repository.list_queue_items(candidate_id) == [
+        {"queue_kind": "nine_column_enrichment", "priority": 100, "status": "completed", "paused_reason": ""}
+    ]
+
+
+def test_reenqueue_preserves_paused_queue_state_and_reason(tmp_path: Path) -> None:
+    repository = CandidateRepository(tmp_path / "candidate-store.sqlite3")
+    candidate_id = repository.upsert_capture(finance_sales_capture(), recommend_assessment())
+    repository.add_queue_item(
+        candidate_id,
+        DetailQueueItem(
+            queue_kind="nine_column_enrichment",
+            priority=100,
+            status="paused",
+            paused_reason="user needs to verify education",
+        ),
+    )
+
+    QueueService(repository).enqueue_for_pool(candidate_id, recommend_assessment())
+
+    assert repository.list_queue_items(candidate_id) == [
+        {
+            "queue_kind": "nine_column_enrichment",
+            "priority": 100,
+            "status": "paused",
+            "paused_reason": "user needs to verify education",
+        }
+    ]

@@ -49,14 +49,32 @@ class CandidateRepository:
                 )
                 candidate_id = int(cursor.lastrowid)
             else:
-                set_clause = ", ".join(f"{column} = :{column}" for column in values if column != "platform")
+                capture_columns = [
+                    "platform_candidate_id",
+                    "current_company",
+                    "current_role",
+                    "name",
+                    "gender",
+                    "age",
+                    "current_location",
+                    "preferred_location",
+                    "master_school",
+                    "bachelor_school",
+                ]
+                set_clause = ", ".join(
+                    f"{column} = COALESCE(NULLIF(:{column}, ''), {column})"
+                    for column in capture_columns
+                )
+                set_clause += ", pool_outcome = :pool_outcome, pool_evidence = :pool_evidence"
                 connection.execute(
                     f"UPDATE candidate SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = :id",
                     {**values, "id": candidate_id},
                 )
-                connection.execute("DELETE FROM career_evidence WHERE candidate_id = ?", (candidate_id,))
+                if capture.career_evidence:
+                    connection.execute("DELETE FROM career_evidence WHERE candidate_id = ?", (candidate_id,))
 
-            self._insert_evidence(connection, candidate_id, capture)
+            if capture.career_evidence:
+                self._insert_evidence(connection, candidate_id, capture)
             connection.execute(
                 """
                 INSERT INTO candidate_source (candidate_id, platform, scanned_at, page_type, source_description, field_missing)
@@ -80,12 +98,27 @@ class CandidateRepository:
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(candidate_id, queue_kind) DO UPDATE SET
                     priority = excluded.priority,
-                    status = excluded.status,
-                    paused_reason = excluded.paused_reason
+                    status = CASE
+                        WHEN detail_queue.status IN ('completed', 'paused') AND excluded.status = 'pending'
+                        THEN detail_queue.status
+                        ELSE excluded.status
+                    END,
+                    paused_reason = CASE
+                        WHEN detail_queue.status IN ('completed', 'paused') AND excluded.status = 'pending'
+                        THEN detail_queue.paused_reason
+                        ELSE excluded.paused_reason
+                    END
                 """,
                 (candidate_id, item.queue_kind, item.priority, item.status, item.paused_reason),
             )
-        return item
+            row = connection.execute(
+                """
+                SELECT queue_kind, priority, status, paused_reason
+                FROM detail_queue WHERE candidate_id = ? AND queue_kind = ?
+                """,
+                (candidate_id, item.queue_kind),
+            ).fetchone()
+        return DetailQueueItem.model_validate(dict(row))
 
     def get_candidate(self, candidate_id: int) -> dict[str, object]:
         with self._connect() as connection:

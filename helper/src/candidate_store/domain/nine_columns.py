@@ -7,7 +7,8 @@ from candidate_store.domain.models import CandidateCapture
 
 NINE_COLUMN_FIELDS = (
     "current_company",
-    "name_gender",
+    "name",
+    "gender",
     "age",
     "current_location",
     "preferred_location",
@@ -20,7 +21,8 @@ NINE_COLUMN_FIELDS = (
 @dataclass(frozen=True)
 class NineColumnDraft:
     current_company: str = ""
-    name_gender: str = ""
+    name: str = ""
+    gender: str = ""
     age: str = ""
     current_location: str = ""
     preferred_location: str = ""
@@ -37,7 +39,8 @@ def to_nine_column_draft(capture: CandidateCapture) -> NineColumnDraft:
 
     return NineColumnDraft(
         current_company=capture.current_company,
-        name_gender=_join_visible(capture.name, capture.gender),
+        name=capture.name,
+        gender=capture.gender,
         age=capture.age,
         current_location=capture.current_location,
         preferred_location=capture.preferred_location,
@@ -45,7 +48,3 @@ def to_nine_column_draft(capture: CandidateCapture) -> NineColumnDraft:
         master_school=capture.master_school,
         bachelor_school=capture.bachelor_school,
     )
-
-
-def _join_visible(name: str, gender: str) -> str:
-    return " / ".join(value for value in (name, gender) if value)
