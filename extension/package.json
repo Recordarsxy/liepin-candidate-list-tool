@@ -1,0 +1,17 @@
+{
+  "name": "candidate-store-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest --environment jsdom"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  },
+  "vitest": {
+    "environment": "jsdom"
+  }
+}

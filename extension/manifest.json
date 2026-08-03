@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Candidate Store",
+  "version": "0.1.0",
+  "description": "User-triggered visible-DOM candidate capture.",
+  "action": {
+    "default_title": "Scan current page"
+  },
+  "permissions": ["activeTab"],
+  "host_permissions": ["http://127.0.0.1/*"]
+}

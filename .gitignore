@@ -32,6 +32,7 @@ artifacts/
 extension/node_modules/
 extension/dist/
 extension/coverage/
+extension/.npm-cache/
 node_modules/
 dist/
 coverage/
@@ -42,6 +43,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+helper/.pip-cache/
 .venv/
 venv/
 build/
