@@ -5,36 +5,30 @@ import { describe, expect, it, vi } from "vitest";
 
 import { installMaimaiCardButtons } from "./maimai";
 
-const loadAnonymousFixture = (): string => {
+const loadMaimaiFixture = (): void => {
   document.body.innerHTML = readFileSync(
     resolve(process.cwd(), "../tests/fixtures/maimai/list-normal.html"),
     "utf8",
   );
-  return document.querySelector<HTMLElement>(".TalentRow_beta")!.outerHTML;
 };
 
 describe("Maimai content script", () => {
   it("mounts selected card buttons before communication actions and copies two rows", async () => {
-    const anonymousFixture = loadAnonymousFixture();
-    document.body.innerHTML = [
-      anonymousFixture
-        .replace("\u5468\u5973\u58eb", "\u738b\u5973\u58eb")
-        .replace("\u533f\u540d\u7814\u7a76\u9662", "\u5317\u6781\u661f\u7814\u7a76\u9662"),
-      anonymousFixture
-        .replace("\u5468\u5973\u58eb", "\u8d75\u5973\u58eb")
-        .replace("\u533f\u540d\u7814\u7a76\u9662", "\u8fdc\u822a\u7814\u7a76\u9662"),
-    ].join("");
+    loadMaimaiFixture();
     const writeText = vi.fn().mockResolvedValue(undefined);
 
     const dispose = installMaimaiCardButtons(document, writeText);
-    const actions = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
-      .filter((button) => button.textContent === "\u7acb\u5373\u6c9f\u901a");
+    const actions = [
+      document.querySelector<HTMLElement>(".CommunicationControl_alpha")!,
+      document.querySelector<HTMLElement>(".CommunicationControl_beta")!,
+    ];
 
     expect(actions).toHaveLength(2);
     for (const action of actions) {
       expect(action.previousElementSibling).toMatchObject({
         textContent: "\u52a0\u5165\u6279\u91cf",
       });
+      expect(action.querySelector("[data-candidate-collector-button]")).toBeNull();
     }
 
     document

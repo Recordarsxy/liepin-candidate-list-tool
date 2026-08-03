@@ -18,8 +18,12 @@ describe("Maimai card parser", () => {
     const cards = findMaimaiCards(document);
 
     expect(cards).toHaveLength(2);
-    expect(findMaimaiCommunicationAction(cards[0])).not.toBeNull();
-    expect(findMaimaiCommunicationAction(cards[1])).not.toBeNull();
+    expect(findMaimaiCommunicationAction(cards[0])?.className).toBe(
+      "CommunicationControl_alpha",
+    );
+    expect(findMaimaiCommunicationAction(cards[1])?.className).toBe(
+      "CommunicationControl_beta",
+    );
   });
 
   it("parses visible profile, expectation, and history fields", () => {
@@ -114,6 +118,16 @@ describe("Maimai card parser", () => {
         <button>立即沟通</button>
       </section>
     `;
+
+    expect(findMaimaiCards(document)).toEqual([]);
+  });
+
+  it("does not discover a hidden nested communication label", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span>29岁</span><span>期望：</span>
+        <div style="display:none"><span>沟通</span></div>
+      </section>`;
 
     expect(findMaimaiCards(document)).toEqual([]);
   });

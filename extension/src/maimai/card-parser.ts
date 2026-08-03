@@ -5,9 +5,8 @@ import {
   normalizeMaskedName,
 } from "../shared/candidate-normalization";
 
-const ACTION_SELECTOR = "button,a,[role='button']";
 const PERIOD = /(?:19|20)\d{2}[./-]\d{1,2}\s*[-—–]\s*(?:至今|(?:19|20)\d{2}[./-]\d{1,2})/;
-const COMMUNICATION_TEXT = "立即沟通";
+const COMMUNICATION_TEXTS = new Set(["立即沟通", "沟通"]);
 const EDUCATION_DEGREES = new Set(["硕士", "本科"]);
 const ACTIVITY_LABELS = new Set(["近一周活跃", "本科", "硕士"]);
 
@@ -19,20 +18,16 @@ type HistoryRow = {
 };
 
 export function findMaimaiCommunicationAction(card: HTMLElement): HTMLElement | null {
-  return visibleActions(card).find((element) => visibleText(element) === COMMUNICATION_TEXT) ?? null;
+  return visibleCommunicationActions(card)[0] ?? null;
 }
 
 export function findMaimaiCards(root: ParentNode): HTMLElement[] {
   const cards: HTMLElement[] = [];
-  for (const action of visibleActions(root).filter(
-    (element) => visibleText(element) === COMMUNICATION_TEXT,
-  )) {
+  for (const action of visibleCommunicationActions(root)) {
     let candidate = action.parentElement;
     while (candidate && candidate !== root) {
       const text = visibleLeafTexts(candidate).join(" ");
-      const actionCount = visibleActions(candidate).filter(
-        (element) => visibleText(element) === COMMUNICATION_TEXT,
-      ).length;
+      const actionCount = visibleCommunicationActions(candidate).length;
       if (actionCount === 1 && /\d{1,3}\s*岁/.test(text) && /期望[：:]/.test(text)) {
         if (!cards.includes(candidate)) cards.push(candidate);
         break;
@@ -120,8 +115,42 @@ function findHistoryRows(card: HTMLElement): HistoryRow[] {
     });
 }
 
-function visibleActions(root: ParentNode): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(ACTION_SELECTOR)).filter(isVisible);
+function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
+  const document = root instanceof Document ? root : root.ownerDocument;
+  if (!document) return [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const actions: HTMLElement[] = [];
+
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const label = node.textContent?.trim() ?? "";
+    const parent = node.parentElement;
+    if (!parent || !COMMUNICATION_TEXTS.has(label) || !isVisible(parent)) continue;
+
+    let action = parent;
+    while (
+      action.parentElement &&
+      action.parentElement !== root &&
+      action.parentElement.children.length === 1 &&
+      visibleTextFromNodes(action.parentElement) === label
+    ) {
+      action = action.parentElement;
+    }
+    if (!actions.includes(action)) actions.push(action);
+  }
+
+  return actions;
+}
+
+function visibleTextFromNodes(element: HTMLElement): string {
+  const walker = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const texts: string[] = [];
+
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.textContent?.trim() ?? "";
+    if (text && node.parentElement && isVisible(node.parentElement)) texts.push(text);
+  }
+
+  return texts.join(" ");
 }
 
 function visibleLeafTexts(root: ParentNode): string[] {
