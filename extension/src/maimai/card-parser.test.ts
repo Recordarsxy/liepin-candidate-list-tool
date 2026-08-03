@@ -103,4 +103,34 @@ describe("Maimai card parser", () => {
 
     expect(parseMaimaiCard(card)).toBeNull();
   });
+
+  it("does not discover a visible action when age and expectation markers are hidden", () => {
+    document.body.innerHTML = `
+      <style>.hidden-by-stylesheet { display: none; }</style>
+      <section>
+        <strong>王先生</strong>
+        <span style="display: none">29岁</span>
+        <span class="hidden-by-stylesheet">期望：</span>
+        <button>立即沟通</button>
+      </section>
+    `;
+
+    expect(findMaimaiCards(document)).toEqual([]);
+  });
+
+  it("does not derive gender from a hidden SVG color icon", () => {
+    document.body.innerHTML = `
+      <section>
+        <div style="visibility: hidden"><svg><path fill="#085DFF"></path></svg></div>
+        <strong>王先生</strong><span>29岁</span><span>北京</span>
+        <span>期望：</span><span>北京</span><span>20k-30k</span><span>解决方案顾问</span>
+        <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
+        <button>立即沟通</button>
+      </section>
+    `;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({ gender: "" });
+  });
 });

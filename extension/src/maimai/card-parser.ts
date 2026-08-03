@@ -29,7 +29,7 @@ export function findMaimaiCards(root: ParentNode): HTMLElement[] {
   )) {
     let candidate = action.parentElement;
     while (candidate && candidate !== root) {
-      const text = visibleText(candidate);
+      const text = visibleLeafTexts(candidate).join(" ");
       const actionCount = visibleActions(candidate).filter(
         (element) => visibleText(element) === COMMUNICATION_TEXT,
       ).length;
@@ -89,9 +89,9 @@ function findNameBeforeAge(tokens: string[], ageIndex: number): string {
 }
 
 function findGender(card: HTMLElement): "" | "男" | "女" {
-  const fills = Array.from(card.querySelectorAll("svg [fill]")).map((element) =>
-    element.getAttribute("fill"),
-  );
+  const fills = Array.from(card.querySelectorAll<SVGElement>("svg [fill]"))
+    .filter(isVisible)
+    .map((element) => element.getAttribute("fill"));
   if (fills.includes("#FF5833")) return "女";
   if (fills.includes("#085DFF")) return "男";
   return "";
@@ -136,11 +136,11 @@ function visibleText(element: Element): string {
   return element.textContent?.trim() ?? "";
 }
 
-function isVisible(element: HTMLElement): boolean {
-  for (let current: HTMLElement | null = element; current; current = current.parentElement) {
+function isVisible(element: Element): boolean {
+  for (let current: Element | null = element; current; current = current.parentElement) {
     const styles = current.ownerDocument.defaultView?.getComputedStyle(current);
     if (
-      current.hidden ||
+      current.hasAttribute("hidden") ||
       styles?.display === "none" ||
       styles?.visibility === "hidden" ||
       styles?.visibility === "collapse"
