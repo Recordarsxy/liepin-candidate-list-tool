@@ -51,12 +51,14 @@ async function captureCard(
     return;
   }
   button.textContent = "加入中…";
+  button.title = "";
   button.disabled = true;
   try {
     await options.capture(draft);
     button.textContent = "已加入";
-  } catch {
+  } catch (error: unknown) {
     button.textContent = "重试";
+    button.title = error instanceof Error ? error.message : "本地助手请求失败";
     button.disabled = false;
   }
 }

@@ -49,6 +49,22 @@ describe("side-panel candidate pool", () => {
     expect(root.textContent).toContain("配对码");
   });
 
+  it("shows the pairing error returned by the background", async () => {
+    const root = document.createElement("main");
+    await mountSidePanel(root, {
+      fetchImpl: vi.fn(),
+      storage: {
+        get: vi.fn().mockResolvedValue({}),
+        set: vi.fn().mockResolvedValue(undefined),
+      },
+      pair: vi.fn().mockRejectedValue(new Error("Failed to fetch")),
+    });
+
+    root.querySelector<HTMLButtonElement>("[data-action='pair']")?.click();
+
+    await vi.waitFor(() => expect(root.textContent).toContain("Failed to fetch"));
+  });
+
   it("renders eleven fields, duplicate warning and batch sync", async () => {
     const root = document.createElement("main");
     const fetchImpl = vi

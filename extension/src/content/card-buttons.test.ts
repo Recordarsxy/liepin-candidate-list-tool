@@ -74,4 +74,22 @@ describe("card buttons", () => {
       document.querySelector("[data-candidate-collector-button]"),
     ).toBeNull();
   });
+
+  it("keeps the helper error on a retry button", async () => {
+    document.body.innerHTML = `<article data-card="1"></article>`;
+    const dispose = installCardButtons({
+      root: document,
+      findCards: (root) =>
+        Array.from(root.querySelectorAll<HTMLElement>("[data-card]")),
+      parseCard: () => draft,
+      capture: vi.fn().mockRejectedValue(new Error("Failed to fetch")),
+    });
+    const button = document.querySelector<HTMLButtonElement>("button");
+
+    button?.click();
+    await vi.waitFor(() => expect(button?.textContent).toBe("重试"));
+
+    expect(button?.title).toBe("Failed to fetch");
+    dispose();
+  });
 });

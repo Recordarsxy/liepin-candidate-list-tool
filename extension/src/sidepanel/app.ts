@@ -97,10 +97,23 @@ function renderPairing(root: HTMLElement, dependencies: Dependencies): void {
   const button = document.createElement("button");
   button.dataset.action = "pair";
   button.textContent = "确认配对码";
+  const error = document.createElement("p");
+  error.dataset.role = "pairing-error";
   button.addEventListener("click", () => {
-    void dependencies.pair(input.value).then(() => mountSidePanel(root, dependencies));
+    error.textContent = "";
+    button.disabled = true;
+    void dependencies
+      .pair(input.value)
+      .then(() => mountSidePanel(root, dependencies))
+      .catch((reason: unknown) => {
+        error.textContent =
+          reason instanceof Error ? reason.message : "无法连接本地助手";
+      })
+      .finally(() => {
+        button.disabled = false;
+      });
   });
-  root.replaceChildren(heading, input, button);
+  root.replaceChildren(heading, input, button, error);
 }
 
 function renderToolbar(
