@@ -194,6 +194,34 @@ describe("Maimai card parser", () => {
     });
   });
 
+  it("parses the full row when the nearest named ancestor only contains the action", () => {
+    document.body.innerHTML = `
+      <section class="full-row">
+        <div class="name-action-shell">
+          <strong>王先生</strong><span class="ordinary">沟通</span>
+        </div>
+        <div class="profile-details">
+          <span>34岁</span><span>12年</span><span>本科</span><span>广东深圳</span>
+        </div>
+        <div><span>期望：</span><span>广州/天河区</span><span>机构销售</span></div>
+        <div><span>2020.08 - 至今</span><span>示例科技</span><span>机构销售经理</span></div>
+        <div><span>2016.09 - 2020.06</span><span>示例大学</span><span>市场营销</span><span>本科</span></div>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({
+      name: "王先生",
+      age: "34",
+      current_location: "深圳",
+      preferred_location: "广州",
+      current_company: "示例科技",
+      current_role: "机构销售经理",
+      bachelor_school: "示例大学",
+      bachelor_start_year: "2016",
+    });
+  });
+
   it("separates name and location in a timeline-only sparse row", () => {
     document.body.innerHTML = `
       <section>

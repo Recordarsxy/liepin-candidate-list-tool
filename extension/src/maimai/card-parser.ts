@@ -84,6 +84,9 @@ function findProfileName(tokens: string[]): string {
 }
 
 function findNamedCandidateRoot(start: HTMLElement): HTMLElement {
+  let best: HTMLElement | null = null;
+  let bestScore = -1;
+
   for (let candidate: HTMLElement | null = start; candidate; candidate = candidate.parentElement) {
     if (candidate.matches("body,html")) break;
     if (
@@ -92,9 +95,32 @@ function findNamedCandidateRoot(start: HTMLElement): HTMLElement {
     ) {
       break;
     }
-    if (findProfileName(visibleLeafTexts(candidate))) return candidate;
+    const tokens = visibleLeafTexts(candidate);
+    if (!findProfileName(tokens)) continue;
+
+    const score = candidateDetailScore(tokens);
+    if (score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+    if (tokens.some((token) => PERIOD.test(token))) return candidate;
   }
-  return start;
+  return best ?? start;
+}
+
+function candidateDetailScore(tokens: string[]): number {
+  return tokens.reduce((score, token) => {
+    if (PERIOD.test(token)) return score + 4;
+    if (
+      normalizeAge(token) !== "" ||
+      EXPERIENCE.test(token) ||
+      EDUCATION_DEGREES.has(token) ||
+      EXPECTATION.test(token)
+    ) {
+      return score + 1;
+    }
+    return score;
+  }, 0);
 }
 
 function isProfileBoundary(token: string): boolean {
