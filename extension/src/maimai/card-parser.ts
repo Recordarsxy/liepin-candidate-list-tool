@@ -124,17 +124,26 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const label = node.textContent?.trim() ?? "";
     const parent = node.parentElement;
-    if (!parent || !COMMUNICATION_TEXTS.has(label) || !isVisible(parent)) continue;
+    if (
+      !parent ||
+      !COMMUNICATION_TEXTS.has(label) ||
+      !isVisible(parent) ||
+      visibleTextFromNodes(parent) !== label
+    ) {
+      continue;
+    }
 
     let action = parent;
-    while (
-      action.parentElement &&
-      action.parentElement !== root &&
-      visibleTextFromNodes(action.parentElement) === label &&
-      !hasIndependentVisibleSibling(action)
-    ) {
+    let acceptsExactLabel = true;
+    while (action.parentElement && action.parentElement !== root) {
+      if (hasIndependentVisibleSibling(action)) break;
+      if (visibleTextFromNodes(action.parentElement) !== label) {
+        acceptsExactLabel = isIndependentControl(action);
+        break;
+      }
       action = action.parentElement;
     }
+    if (!acceptsExactLabel) continue;
     if (!actions.includes(action)) actions.push(action);
   }
 

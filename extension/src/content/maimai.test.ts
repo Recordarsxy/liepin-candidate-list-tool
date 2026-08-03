@@ -43,4 +43,22 @@ describe("Maimai content script", () => {
     expect(rows.every((row: string) => row.split("\t")[10] === "\u8109\u8109")).toBe(true);
     dispose();
   });
+
+  it("does not mount a button for a partial nested communication label", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span>29岁</span><span>北京</span>
+        <span>期望：</span><span>北京</span><span>20k-30k</span><span>解决方案顾问</span>
+        <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
+        <div class="real-control"><span class="label">立即沟通</span><span>更多</span></div>
+      </section>`;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    const dispose = installMaimaiCardButtons(document, writeText);
+    try {
+      expect(document.querySelector("[data-candidate-collector-button]")).toBeNull();
+    } finally {
+      dispose();
+    }
+  });
 });

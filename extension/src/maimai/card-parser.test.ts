@@ -41,6 +41,20 @@ describe("Maimai card parser", () => {
     expect(findMaimaiCommunicationAction(card)?.className).toBe("CommunicationControl");
   });
 
+  it("rejects a nested communication label whose parent has additional visible text", () => {
+    document.body.innerHTML = `
+      <section class="candidate-row">
+        <strong>王先生</strong><span>29岁</span><span>北京</span>
+        <span>期望：</span><span>北京</span><span>20k-30k</span><span>解决方案顾问</span>
+        <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
+        <div class="real-control"><span class="label">立即沟通</span><span>更多</span></div>
+      </section>`;
+    const row = document.querySelector<HTMLElement>(".candidate-row")!;
+
+    expect(findMaimaiCommunicationAction(row)).toBeNull();
+    expect(findMaimaiCards(document)).toEqual([]);
+  });
+
   it("parses visible profile, expectation, and history fields", () => {
     document.body.innerHTML = readFileSync(
       resolve(process.cwd(), "../tests/fixtures/maimai/list-normal.html"),
