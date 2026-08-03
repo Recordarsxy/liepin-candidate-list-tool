@@ -50,4 +50,57 @@ describe("Maimai card parser", () => {
       bachelor_start_year: "",
     });
   });
+
+  it("excludes rows hidden by ancestor display, visibility, and stylesheet rules", () => {
+    document.body.innerHTML = `
+      <style>.hidden-by-stylesheet { display: none; }</style>
+      <section class="visible-row"><strong>王先生</strong><span>29岁</span><span>期望：</span><button>立即沟通</button></section>
+      <section style="display: none"><strong>李女士</strong><span>30岁</span><span>期望：</span><button>立即沟通</button></section>
+      <section style="visibility: hidden"><strong>赵先生</strong><span>31岁</span><span>期望：</span><button>立即沟通</button></section>
+      <section class="hidden-by-stylesheet"><strong>孙女士</strong><span>32岁</span><span>期望：</span><button>立即沟通</button></section>
+    `;
+
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].className).toBe("visible-row");
+  });
+
+  it("excludes fields hidden by ancestor display, visibility, and stylesheet rules", () => {
+    document.body.innerHTML = `
+      <style>.hidden-by-stylesheet { display: none; }</style>
+      <section>
+        <strong>王先生</strong><span>29岁</span><span>北京</span>
+        <span>期望：</span><span>北京</span><span>20k-30k</span><span>解决方案顾问</span>
+        <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
+        <div style="display: none"><span>2018.09 - 2021.06</span><span>隐藏大学</span><span>电子信息</span><span>硕士</span></div>
+        <div style="visibility: hidden"><span>2014.09 - 2018.06</span><span>隐藏学院</span><span>自动化</span><span>本科</span></div>
+        <div class="hidden-by-stylesheet"><span>2017.09 - 2020.06</span><span>样式大学</span><span>金融</span><span>硕士</span></div>
+        <button>立即沟通</button>
+      </section>
+    `;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({
+      master_school: "",
+      bachelor_school: "",
+      bachelor_start_year: "",
+    });
+  });
+
+  it("rejects an expectation-only role when work history has no company or role", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span>29岁</span><span>北京</span>
+        <span>期望：</span><span>北京</span><span>20k-30k</span><span>解决方案顾问</span>
+        <div><span>2022.03 - 至今</span></div>
+        <button>立即沟通</button>
+      </section>
+    `;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toBeNull();
+  });
 });

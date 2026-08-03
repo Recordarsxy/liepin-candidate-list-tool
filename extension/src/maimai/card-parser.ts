@@ -55,8 +55,7 @@ export function parseMaimaiCard(card: HTMLElement): CandidateDraft | null {
   const bachelor = histories.find((row) => row.degree === "本科");
   const currentLocation = findCurrentLocation(tokens, ageIndex, expectationIndex);
   const preferredLocation = expectationIndex === -1 ? "" : normalizeCityLevelLocation(tokens[expectationIndex + 1] ?? "");
-  const expectedRole = expectationIndex === -1 ? "" : tokens[expectationIndex + 3] ?? "";
-  const currentRole = currentWork?.subject || expectedRole;
+  const currentRole = currentWork?.subject ?? "";
 
   if (!name || (!currentWork?.organization && !currentRole)) return null;
 
@@ -138,5 +137,16 @@ function visibleText(element: Element): string {
 }
 
 function isVisible(element: HTMLElement): boolean {
-  return !element.hidden && !element.closest("[hidden]") && element.style.display !== "none";
+  for (let current: HTMLElement | null = element; current; current = current.parentElement) {
+    const styles = current.ownerDocument.defaultView?.getComputedStyle(current);
+    if (
+      current.hidden ||
+      styles?.display === "none" ||
+      styles?.visibility === "hidden" ||
+      styles?.visibility === "collapse"
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
