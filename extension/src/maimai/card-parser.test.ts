@@ -26,6 +26,21 @@ describe("Maimai card parser", () => {
     );
   });
 
+  it("expands through decorative control children but not an independent phone sibling", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span>29岁</span><span>期望：</span>
+        <div class="ActionGroup">
+          <div class="CommunicationControl"><span>立即沟通</span><svg aria-hidden="true"></svg><span class="DecorativeBadge"></span></div>
+          <div class="PhoneControl" role="button" aria-label="phone"></div>
+        </div>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(findMaimaiCommunicationAction(card)?.className).toBe("CommunicationControl");
+  });
+
   it("parses visible profile, expectation, and history fields", () => {
     document.body.innerHTML = readFileSync(
       resolve(process.cwd(), "../tests/fixtures/maimai/list-normal.html"),

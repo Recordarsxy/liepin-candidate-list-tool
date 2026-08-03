@@ -130,8 +130,8 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
     while (
       action.parentElement &&
       action.parentElement !== root &&
-      action.parentElement.children.length === 1 &&
-      visibleTextFromNodes(action.parentElement) === label
+      visibleTextFromNodes(action.parentElement) === label &&
+      !hasIndependentVisibleSibling(action)
     ) {
       action = action.parentElement;
     }
@@ -151,6 +151,30 @@ function visibleTextFromNodes(element: HTMLElement): string {
   }
 
   return texts.join(" ");
+}
+
+function hasIndependentVisibleSibling(element: HTMLElement): boolean {
+  return Array.from(element.parentElement?.children ?? []).some(
+    (sibling) =>
+      sibling !== element &&
+      isVisible(sibling) &&
+      sibling.getAttribute("aria-hidden")?.toLowerCase() !== "true" &&
+      isIndependentControl(sibling),
+  );
+}
+
+function isIndependentControl(element: Element): boolean {
+  if (
+    element.matches(
+      "button,a,input,select,textarea,[role='button'],[role='link']",
+    ) ||
+    Boolean(element.getAttribute("aria-label")?.trim())
+  ) {
+    return true;
+  }
+
+  const tabindex = element.getAttribute("tabindex");
+  return tabindex !== null && Number(tabindex) >= 0;
 }
 
 function visibleLeafTexts(root: ParentNode): string[] {
