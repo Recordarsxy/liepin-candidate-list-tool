@@ -56,5 +56,6 @@ release/
 .idea/
 .vscode/
 .worktrees/
+.superpowers/
 .DS_Store
 Thumbs.db
