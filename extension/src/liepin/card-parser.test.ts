@@ -18,8 +18,8 @@ describe("Liepin card parser", () => {
       platform: "liepin",
       platform_candidate_id: "lp-live-1",
       name: "陈女士",
-      gender: "",
-      age: "31岁",
+      gender: "女",
+      age: "31",
       current_location: "上海",
       preferred_location: "杭州",
       current_role: "高级客户经理",
@@ -46,7 +46,7 @@ describe("Liepin card parser", () => {
       current_company: "Northwind Capital",
       name: "陈女士",
       gender: "女",
-      age: "31岁",
+      age: "31",
       current_location: "上海",
       preferred_location: "杭州",
       current_role: "机构销售",
@@ -61,5 +61,45 @@ describe("Liepin card parser", () => {
     card.innerHTML = `<span data-field="age">31岁</span>`;
 
     expect(parseLiepinCard(card)).toBeNull();
+  });
+
+  it("reads the blue name-adjacent icon without using another red icon", () => {
+    const card = document.createElement("article");
+    card.className = "tlog-common-resume-card";
+    card.innerHTML = `
+      <div class="new-resume-personal-name">
+        <em>赵**</em>
+        <span class="anticon"><svg><circle fill="#085DFF"></circle></svg></span>
+      </div>
+      <span class="personal-detail-age">42岁</span>
+      <span class="personal-detail-dq">深圳—南山区</span>
+      <div class="new-resume-personal-expect">
+        <span class="personal-expect-content"><span>广州/天河区</span><span>销售总监</span></span>
+      </div>
+      <span class="anticon anticon-file-text"><svg><path fill="#FF5833"></path></svg></span>`;
+
+    expect(parseLiepinCard(card)).toMatchObject({
+      name: "赵先生",
+      gender: "男",
+      age: "42",
+      current_location: "深圳",
+      preferred_location: "广州",
+    });
+  });
+
+  it("does not infer gender from an unrelated red icon", () => {
+    const card = document.createElement("article");
+    card.className = "tlog-common-resume-card";
+    card.innerHTML = `
+      <div class="new-resume-personal-name"><em>孙**</em></div>
+      <div class="new-resume-personal-expect">
+        <span class="personal-expect-content"><span>上海</span><span>客户经理</span></span>
+      </div>
+      <span class="anticon anticon-file-text"><svg><path fill="#FF5833"></path></svg></span>`;
+
+    expect(parseLiepinCard(card)).toMatchObject({
+      name: "孙**",
+      gender: "",
+    });
   });
 });

@@ -1,5 +1,10 @@
 import type { CandidateDraft } from "../contracts/candidate";
 import { parseVisibleCard } from "../shared/card-fields";
+import {
+  normalizeAge,
+  normalizeCityLevelLocation,
+  normalizeMaskedName,
+} from "../shared/candidate-normalization";
 
 const CARD_SELECTORS = [
   "table.new-resume-card",
@@ -28,6 +33,7 @@ function parseLiveLiepinCard(
   id: string | undefined,
 ): CandidateDraft | null {
   const name = visibleText(card.querySelector(".new-resume-personal-name em"));
+  const gender = liveGender(card);
   const expected = expectedParts(card);
   const entries = historyEntries(card);
   const work = entries.find(
@@ -44,17 +50,30 @@ function parseLiveLiepinCard(
     ...(id ? { platform_candidate_id: id } : {}),
     source_page_type: "list",
     current_company: work?.parts[0] ?? "",
-    name,
-    gender: "",
-    age: visibleText(card.querySelector(".personal-detail-age")),
-    current_location: visibleText(card.querySelector(".personal-detail-dq")),
-    preferred_location: expected[0] ?? "",
+    name: normalizeMaskedName(name, gender),
+    gender,
+    age: normalizeAge(visibleText(card.querySelector(".personal-detail-age"))),
+    current_location: normalizeCityLevelLocation(
+      visibleText(card.querySelector(".personal-detail-dq")),
+    ),
+    preferred_location: normalizeCityLevelLocation(expected[0] ?? ""),
     current_role: work?.parts[1] ?? expected[1] ?? "",
     master_school: master?.parts[0] ?? "",
     bachelor_school: bachelor?.parts[0] ?? "",
     bachelor_start_year:
       bachelor?.period.match(/(?:19|20)\d{2}/)?.[0] ?? "",
   };
+}
+
+function liveGender(card: HTMLElement): "" | "男" | "女" {
+  const name = card.querySelector(".new-resume-personal-name > em");
+  const icon = name?.nextElementSibling;
+  if (!(icon instanceof HTMLElement) || !icon.matches("span.anticon")) return "";
+  const svg = icon.querySelector("svg")?.outerHTML.toUpperCase() ?? "";
+  const female = svg.includes("#FF5833");
+  const male = svg.includes("#085DFF");
+  if (female === male) return "";
+  return female ? "女" : "男";
 }
 
 function expectedParts(card: HTMLElement): string[] {
