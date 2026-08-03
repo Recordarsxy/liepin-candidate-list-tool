@@ -128,6 +128,26 @@ describe("Maimai card parser", () => {
     expect(findMaimaiCommunicationAction(cards[0])?.className).toBe("ordinary");
   });
 
+  it("discovers an exact communication action without profile markers", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong>
+        <div class="ordinary">立即沟通</div>
+      </section>`;
+
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(1);
+    expect(findMaimaiCommunicationAction(cards[0])?.className).toBe("ordinary");
+    expect(parseMaimaiCard(cards[0])).toMatchObject({
+      name: "王先生",
+      age: "",
+      current_company: "",
+      current_role: "",
+      preferred_location: "",
+    });
+  });
+
   it("separates name and location in a timeline-only sparse row", () => {
     document.body.innerHTML = `
       <section>
@@ -146,14 +166,17 @@ describe("Maimai card parser", () => {
     });
   });
 
-  it("does not treat status text as a candidate name", () => {
+  it("mounts from the action but does not treat status text as a candidate name", () => {
     document.body.innerHTML = `
       <section>
         <span>近一周活跃</span><span>29岁</span><span>期望：</span>
         <div class="ordinary">沟通</div>
       </section>`;
 
-    expect(findMaimaiCards(document)).toEqual([]);
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(1);
+    expect(parseMaimaiCard(cards[0])).toBeNull();
   });
 
   it("excludes rows hidden by ancestor display, visibility, and stylesheet rules", () => {
@@ -194,7 +217,7 @@ describe("Maimai card parser", () => {
     });
   });
 
-  it("rejects an expectation-only role when work history has no company or role", () => {
+  it("keeps work fields empty when work history has no company or role", () => {
     document.body.innerHTML = `
       <section>
         <strong>王先生</strong><span>29岁</span><span>北京</span>
@@ -206,10 +229,14 @@ describe("Maimai card parser", () => {
 
     const card = findMaimaiCards(document)[0];
 
-    expect(parseMaimaiCard(card)).toBeNull();
+    expect(parseMaimaiCard(card)).toMatchObject({
+      name: "王先生",
+      current_company: "",
+      current_role: "",
+    });
   });
 
-  it("does not discover a visible action when age and expectation markers are hidden", () => {
+  it("discovers a visible action even when age and expectation markers are hidden", () => {
     document.body.innerHTML = `
       <style>.hidden-by-stylesheet { display: none; }</style>
       <section>
@@ -220,7 +247,7 @@ describe("Maimai card parser", () => {
       </section>
     `;
 
-    expect(findMaimaiCards(document)).toEqual([]);
+    expect(findMaimaiCards(document)).toHaveLength(1);
   });
 
   it("does not discover a hidden nested communication label", () => {

@@ -87,4 +87,36 @@ describe("Maimai content script", () => {
       dispose();
     }
   });
+
+  it("mounts and selects a name-only row from its communication action", async () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong>
+        <div class="ordinary">立即沟通</div>
+      </section>`;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    const dispose = installMaimaiCardButtons(document, writeText);
+    const action = document.querySelector<HTMLElement>(".ordinary")!;
+    try {
+      const collect = document.querySelector<HTMLButtonElement>(
+        "[data-candidate-collector-button]",
+      );
+      expect(action.previousElementSibling).toBe(collect);
+      expect(collect?.textContent).toBe("加入批量");
+
+      collect?.click();
+      expect(collect?.textContent).toBe("已选择");
+      document.querySelector<HTMLButtonElement>("[data-action='copy-batch']")?.click();
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+
+      const cells = writeText.mock.calls[0][0].split("\t");
+      expect(cells).toHaveLength(11);
+      expect(cells[1]).toBe("王先生");
+      expect(cells.slice(2, 10)).toEqual(["", "", "", "", "", "", "", ""]);
+      expect(cells[10]).toBe("脉脉");
+    } finally {
+      dispose();
+    }
+  });
 });

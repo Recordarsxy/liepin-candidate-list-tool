@@ -13,6 +13,8 @@ const EXPECTATION = /^期望[：:]/;
 const PROFILE_STATUS = /活跃|求职|机会|动向|招聘动态|关注行情|简历/;
 const DISPLAY_NAME = /^[\u3400-\u9fff]{1,4}(?:[＊*？?]+)?$/u;
 const EXPLICIT_DISPLAY_NAME = /(?:先生|女士|[＊*？?]+)$/u;
+const COLLECTOR_UI =
+  "[data-candidate-collector-button],[data-candidate-collector-batch]";
 
 type HistoryRow = {
   period: string;
@@ -28,26 +30,20 @@ export function findMaimaiCommunicationAction(card: HTMLElement): HTMLElement | 
 export function findMaimaiCards(root: ParentNode): HTMLElement[] {
   const cards: HTMLElement[] = [];
   for (const action of visibleCommunicationActions(root)) {
-    let candidate = action.parentElement;
-    while (candidate && candidate !== root) {
-      const actionCount = visibleCommunicationActions(candidate).length;
-      if (actionCount === 1 && hasCandidateSignature(candidate)) {
-        if (!cards.includes(candidate)) cards.push(candidate);
-        break;
-      }
-      candidate = candidate.parentElement;
-    }
+    const mount = action.parentElement ?? action;
+    if (!cards.includes(mount)) cards.push(mount);
   }
   return cards;
 }
 
 export function parseMaimaiCard(card: HTMLElement): CandidateDraft | null {
-  const tokens = visibleLeafTexts(card);
+  const candidate = findNamedCandidateRoot(card);
+  const tokens = visibleLeafTexts(candidate);
   const ageIndex = tokens.findIndex((token) => normalizeAge(token) !== "");
   const expectationIndex = tokens.findIndex((token) => EXPECTATION.test(token));
   const name = findProfileName(tokens);
-  const gender = findGender(card);
-  const histories = findHistoryRows(card);
+  const gender = findGender(candidate);
+  const histories = findHistoryRows(candidate);
   const currentWork = histories.find((row) => !EDUCATION_DEGREES.has(row.degree));
   const master = histories.find((row) => row.degree === "硕士");
   const bachelor = histories.find((row) => row.degree === "本科");
@@ -55,7 +51,7 @@ export function parseMaimaiCard(card: HTMLElement): CandidateDraft | null {
   const preferredLocation = expectationIndex === -1 ? "" : normalizeCityLevelLocation(tokens[expectationIndex + 1] ?? "");
   const currentRole = currentWork?.subject ?? "";
 
-  if (!name || (!currentWork?.organization && !currentRole)) return null;
+  if (!name) return null;
 
   return {
     platform: "maimai",
@@ -77,8 +73,20 @@ function findProfileName(tokens: string[]): string {
   const boundaryIndex = tokens.findIndex(isProfileBoundary);
   const candidates = tokens
     .slice(0, boundaryIndex === -1 ? undefined : boundaryIndex)
-    .filter((token) => DISPLAY_NAME.test(token) && !PROFILE_STATUS.test(token));
+    .filter(
+      (token) =>
+        DISPLAY_NAME.test(token) &&
+        !PROFILE_STATUS.test(token) &&
+        !COMMUNICATION_TEXTS.has(token),
+    );
   return candidates.find((token) => EXPLICIT_DISPLAY_NAME.test(token)) ?? candidates[0] ?? "";
+}
+
+function findNamedCandidateRoot(start: HTMLElement): HTMLElement {
+  for (let candidate: HTMLElement | null = start; candidate; candidate = candidate.parentElement) {
+    if (findProfileName(visibleLeafTexts(candidate))) return candidate;
+  }
+  return start;
 }
 
 function isProfileBoundary(token: string): boolean {
@@ -182,7 +190,7 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
     while (action.parentElement && action.parentElement !== root) {
       if (hasIndependentVisibleSibling(action)) break;
       if (visibleTextFromNodes(action.parentElement) !== label) {
-        acceptsExactLabel = hasCandidateSignature(action.parentElement);
+        acceptsExactLabel = isCommunicationControlElement(action);
         break;
       }
       action = action.parentElement;
@@ -206,15 +214,8 @@ function visibleTextFromNodes(element: HTMLElement): string {
   return texts.join(" ");
 }
 
-function hasCandidateSignature(root: ParentNode): boolean {
-  const tokens = visibleLeafTexts(root);
-  return (
-    findProfileName(tokens) !== "" &&
-    tokens.some(
-      (token) =>
-        normalizeAge(token) !== "" || EXPECTATION.test(token) || PERIOD.test(token),
-    )
-  );
+function isCommunicationControlElement(element: HTMLElement): boolean {
+  return element.matches("button,a,div,[role='button'],[role='link']");
 }
 
 function hasIndependentVisibleSibling(element: HTMLElement): boolean {
@@ -243,7 +244,13 @@ function isIndependentControl(element: Element): boolean {
 
 function visibleLeafTexts(root: ParentNode): string[] {
   return Array.from(root.querySelectorAll<HTMLElement>("*")).flatMap((element) => {
-    if (element.children.length || !isVisible(element)) return [];
+    if (
+      element.children.length ||
+      !isVisible(element) ||
+      element.closest(COLLECTOR_UI)
+    ) {
+      return [];
+    }
     const text = visibleText(element);
     return text ? [text] : [];
   });
