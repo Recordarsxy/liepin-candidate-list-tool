@@ -265,6 +265,18 @@ describe("Maimai card parser", () => {
     expect(parseMaimaiCard(card)).toMatchObject({ name: "张也冰", gender: "男" });
   });
 
+  it("does not treat an unrelated blue interactive icon before the name as gender", () => {
+    document.body.innerHTML = `
+      <section>
+        <button aria-label="筛选"><svg><path fill="#085DFF"></path></svg></button>
+        <strong>王小明</strong><span class="ordinary">沟通</span>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({ name: "王小明", gender: "" });
+  });
+
   it("uses an explicit name honorific when no badge color is available", () => {
     document.body.innerHTML = `
       <section>
@@ -292,6 +304,19 @@ describe("Maimai card parser", () => {
       current_location: "北京",
       preferred_location: "",
     });
+  });
+
+  it("does not treat a split history period as the current location", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span>34岁</span><span>本科</span>
+        <div><span>2016.10</span><span>-</span><span>2019.09</span><span>示例公司</span><span>机构销售</span></div>
+        <span class="ordinary">沟通</span>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({ current_location: "" });
   });
 
   it("mounts from the action but does not treat status text as a candidate name", () => {

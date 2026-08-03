@@ -137,19 +137,12 @@ function findGender(card: HTMLElement, name: string): "" | "男" | "女" {
 
   const nameElement = Array.from(card.querySelectorAll<HTMLElement>("*"))
     .find((element) => isVisible(element) && visibleText(element) === name);
-  const avatar = nameElement
-    ? Array.from(card.querySelectorAll<HTMLImageElement>("img"))
-        .filter((image) => isVisible(image) && comesBefore(image, nameElement))
-        .at(-1)
-    : undefined;
-  const region = avatar?.parentElement ?? card;
-  const coloredElements = Array.from(
-    region.querySelectorAll<SVGElement>("svg,svg *"),
-  ).filter(
-    (element) =>
-      isVisible(element) &&
-      (!nameElement || region !== card || comesBefore(element, nameElement)),
-  );
+  const region = nameElement ? findAvatarRegionBeforeName(card, nameElement) : null;
+  if (!region) return "";
+  const coloredElements = [
+    ...(region.matches("svg,svg *") ? [region] : []),
+    ...Array.from(region.querySelectorAll("svg,svg *")),
+  ].filter((element) => isVisible(element));
 
   for (const element of coloredElements) {
     const styles = element.ownerDocument.defaultView?.getComputedStyle(element);
@@ -169,10 +162,26 @@ function findGender(card: HTMLElement, name: string): "" | "男" | "女" {
   return "";
 }
 
-function comesBefore(element: Element, reference: Element): boolean {
-  return Boolean(
-    element.compareDocumentPosition(reference) & Node.DOCUMENT_POSITION_FOLLOWING,
-  );
+function findAvatarRegionBeforeName(
+  card: HTMLElement,
+  nameElement: HTMLElement,
+): Element | null {
+  for (
+    let anchor: Element | null = nameElement;
+    anchor && anchor !== card;
+    anchor = anchor.parentElement
+  ) {
+    const previous = anchor.previousElementSibling;
+    if (!previous) continue;
+    if (isIndependentControl(previous)) return null;
+    if (
+      previous.matches("img,svg") ||
+      previous.querySelector("img,svg")
+    ) {
+      return previous;
+    }
+  }
+  return null;
 }
 
 function genderFromColor(color: string): "" | "男" | "女" {
@@ -213,7 +222,7 @@ function findCurrentLocation(
   ageIndex: number,
   expectationIndex: number,
 ): string {
-  const timelineIndex = tokens.findIndex((token) => PERIOD.test(token));
+  const timelineIndex = findPeriodSpans(tokens)[0]?.start ?? -1;
   const summaryEnd = Math.min(
     expectationIndex === -1 ? tokens.length : expectationIndex,
     timelineIndex === -1 ? tokens.length : timelineIndex,
