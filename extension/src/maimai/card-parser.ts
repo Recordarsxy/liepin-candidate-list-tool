@@ -112,7 +112,7 @@ function candidateDetailScore(tokens: string[]): number {
     if (
       normalizeAge(token) !== "" ||
       EXPERIENCE.test(token) ||
-      EDUCATION_DEGREES.has(token) ||
+      normalizeEducationDegree(token) !== "" ||
       EXPECTATION.test(token)
     ) {
       return score + 1;
@@ -313,10 +313,12 @@ function findHistoryRows(card: HTMLElement): HistoryRow[] {
 
 function normalizeEducationDegree(field: string): string {
   const value = field.trim();
-  if (/博士|ph\.?d/i.test(value)) return "博士";
-  if (/硕士|研究生|mba|emba|mpa|mpacc/i.test(value)) return "硕士";
-  if (/本科|学士/.test(value)) return "本科";
-  if (/大专|专科/.test(value)) return "大专";
+  if (/^(?:博士(?:研究生)?|ph\.?\s*d\.?)$/i.test(value)) return "博士";
+  if (/^(?:硕士(?:研究生)?|研究生|mba|emba|mpa|mpacc)$/i.test(value)) {
+    return "硕士";
+  }
+  if (/^(?:本科(?:统招)?|学士)$/.test(value)) return "本科";
+  if (/^(?:大专|专科)$/.test(value)) return "大专";
   return "";
 }
 

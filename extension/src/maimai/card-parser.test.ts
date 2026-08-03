@@ -281,6 +281,39 @@ describe("Maimai card parser", () => {
     });
   });
 
+  it("uses an extended education label when selecting the complete candidate root", () => {
+    document.body.innerHTML = `
+      <section class="full-row">
+        <div class="name-action-shell">
+          <strong>李女士</strong><span class="ordinary">沟通</span>
+        </div>
+        <div class="profile-details"><span>本科统招</span><span>广东深圳</span></div>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({
+      name: "李女士",
+      current_location: "深圳",
+    });
+  });
+
+  it("does not treat degree words inside companies or roles as education labels", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span class="ordinary">沟通</span>
+        <div><span>2022.03 - 至今</span><span>示例研究生院</span><span>MBA项目经理</span></div>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({
+      current_company: "示例研究生院",
+      current_role: "MBA项目经理",
+      master_school: "",
+    });
+  });
+
   it("reads a blue CSS avatar badge as male", () => {
     document.body.innerHTML = `
       <section>
