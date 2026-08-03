@@ -1,31 +1,26 @@
-import { CAPTURE_MESSAGE, requireRuntimeStatus } from "../contracts/messages";
-import { installCardButtons } from "./card-buttons";
 import { findLiepinCards, parseLiepinCard } from "../liepin/card-parser";
+import { installCardButtons } from "./card-buttons";
 import {
   installCollectorToggle,
   type StorageChangeListener,
 } from "./collector-toggle";
 
-type SendMessage = (message: unknown) => Promise<unknown>;
+type WriteText = (text: string) => Promise<void>;
 
 export function installLiepinCardButtons(
   root: Document,
-  sendMessage: SendMessage,
+  writeText: WriteText,
 ): () => void {
   return installCardButtons({
     root,
     findCards: findLiepinCards,
     parseCard: parseLiepinCard,
-    capture: async (capture) => {
-      const response = await sendMessage({ type: CAPTURE_MESSAGE, capture });
-      requireRuntimeStatus(response, "stored");
-    },
+    copy: writeText,
   });
 }
 
 declare const chrome:
   | {
-      runtime: { sendMessage: SendMessage };
       storage: {
         local: { get: (key: string) => Promise<Record<string, unknown>> };
         onChanged: {
@@ -43,7 +38,7 @@ if (typeof chrome !== "undefined") {
     install: () =>
       installLiepinCardButtons(
         document,
-        chrome.runtime.sendMessage.bind(chrome.runtime),
+        navigator.clipboard.writeText.bind(navigator.clipboard),
       ),
   });
 }

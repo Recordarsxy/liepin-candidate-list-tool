@@ -5,7 +5,7 @@ import contentSource from "./liepin.ts?raw";
 import { installLiepinCardButtons } from "./liepin";
 
 describe("Liepin content script", () => {
-  it("captures only the clicked visible card through runtime messaging", async () => {
+  it("copies only the clicked visible card as eleven cells", async () => {
     document.body.innerHTML = `
       <table class="new-resume-card" data-liepin-candidate-id="lp-1">
         <tbody><tr><td>
@@ -14,17 +14,20 @@ describe("Liepin content script", () => {
           <span data-field="current-role">机构销售</span>
         </td></tr></tbody>
       </table>`;
-    const sendMessage = vi.fn().mockResolvedValue({ status: "stored" });
+    const writeText = vi.fn().mockResolvedValue(undefined);
 
-    const dispose = installLiepinCardButtons(document, sendMessage);
+    const dispose = installLiepinCardButtons(document, writeText);
     document.querySelector<HTMLButtonElement>("button")?.click();
-    await vi.waitFor(() => expect(sendMessage).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
 
-    expect(sendMessage.mock.calls[0][0].capture.platform).toBe("liepin");
+    const cells = writeText.mock.calls[0][0].split("\t");
+    expect(cells).toHaveLength(11);
+    expect(cells[1]).toBe("陈女士");
+    expect(cells[10]).toBe("猎聘");
     dispose();
   });
 
-  it("shows retry when the background reports a helper error", async () => {
+  it("shows retry when the clipboard write fails", async () => {
     document.body.innerHTML = `
       <table class="new-resume-card" data-liepin-candidate-id="lp-1">
         <tbody><tr><td>
@@ -33,12 +36,9 @@ describe("Liepin content script", () => {
           <span data-field="current-role">机构销售</span>
         </td></tr></tbody>
       </table>`;
-    const sendMessage = vi.fn().mockResolvedValue({
-      status: "error",
-      error: "本地助手拒绝了请求",
-    });
+    const writeText = vi.fn().mockRejectedValue(new Error("剪贴板被浏览器拒绝"));
 
-    const dispose = installLiepinCardButtons(document, sendMessage);
+    const dispose = installLiepinCardButtons(document, writeText);
     document.querySelector<HTMLButtonElement>("button")?.click();
     await vi.waitFor(() =>
       expect(document.querySelector("button")?.textContent).toBe("重试"),
@@ -54,5 +54,7 @@ describe("Liepin content script", () => {
 
   it("does not import or execute the background service worker in page context", () => {
     expect(contentSource).not.toContain('../background');
+    expect(contentSource).not.toContain("sendMessage");
+    expect(contentSource).not.toContain("CAPTURE_MESSAGE");
   });
 });
