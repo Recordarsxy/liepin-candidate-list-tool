@@ -95,7 +95,7 @@ describe("Maimai card parser", () => {
       current_company: "示例科技",
       name: "陈先生",
       gender: "男",
-      age: "29",
+      age: "",
       current_location: "北京",
       preferred_location: "北京",
       current_role: "行业顾问",
@@ -105,9 +105,37 @@ describe("Maimai card parser", () => {
     });
 
     expect(parseMaimaiCard(cards[1])).toMatchObject({
+      name: "周女士",
+      age: "34",
+      current_location: "西安",
+      preferred_location: "",
       bachelor_school: "",
       bachelor_start_year: "",
     });
+  });
+
+  it("discovers a named row from timeline evidence alone", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span>求职中</span>
+        <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
+        <div class="ordinary">沟通</div>
+      </section>`;
+
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(1);
+    expect(findMaimaiCommunicationAction(cards[0])?.className).toBe("ordinary");
+  });
+
+  it("does not treat status text as a candidate name", () => {
+    document.body.innerHTML = `
+      <section>
+        <span>近一周活跃</span><span>29岁</span><span>期望：</span>
+        <div class="ordinary">沟通</div>
+      </section>`;
+
+    expect(findMaimaiCards(document)).toEqual([]);
   });
 
   it("excludes rows hidden by ancestor display, visibility, and stylesheet rules", () => {

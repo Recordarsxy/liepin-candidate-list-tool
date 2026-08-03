@@ -18,30 +18,36 @@ describe("Maimai content script", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
 
     const dispose = installMaimaiCardButtons(document, writeText);
-    const actions = [
-      document.querySelector<HTMLElement>(".CommunicationControl_alpha")!,
-      document.querySelector<HTMLElement>(".CommunicationControl_beta")!,
-    ];
+    try {
+      const actions = [
+        document.querySelector<HTMLElement>(".CommunicationControl_alpha")!,
+        document.querySelector<HTMLElement>(".CommunicationControl_beta")!,
+      ];
 
-    expect(actions).toHaveLength(2);
-    for (const action of actions) {
-      expect(action.previousElementSibling).toMatchObject({
-        textContent: "\u52a0\u5165\u6279\u91cf",
-      });
-      expect(action.querySelector("[data-candidate-collector-button]")).toBeNull();
+      expect(actions).toHaveLength(2);
+      for (const action of actions) {
+        expect(action.previousElementSibling).toMatchObject({
+          textContent: "\u52a0\u5165\u6279\u91cf",
+        });
+        expect(action.querySelector("[data-candidate-collector-button]")).toBeNull();
+      }
+
+      document
+        .querySelectorAll<HTMLButtonElement>("[data-candidate-collector-button]")
+        .forEach((button) => button.click());
+      document.querySelector<HTMLButtonElement>("[data-action='copy-batch']")?.click();
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+
+      const rows = writeText.mock.calls[0][0].split("\n");
+      expect(rows).toHaveLength(2);
+      expect(rows.every((row: string) => row.split("\t").length === 11)).toBe(true);
+      expect(rows.every((row: string) => row.split("\t")[10] === "\u8109\u8109")).toBe(true);
+      const cells = rows.map((row: string) => row.split("\t"));
+      expect(cells[0].slice(1, 6)).toEqual(["陈先生", "男", "", "北京", "北京"]);
+      expect(cells[1].slice(1, 6)).toEqual(["周女士", "", "34", "西安", ""]);
+    } finally {
+      dispose();
     }
-
-    document
-      .querySelectorAll<HTMLButtonElement>("[data-candidate-collector-button]")
-      .forEach((button) => button.click());
-    document.querySelector<HTMLButtonElement>("[data-action='copy-batch']")?.click();
-    await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-
-    const rows = writeText.mock.calls[0][0].split("\n");
-    expect(rows).toHaveLength(2);
-    expect(rows.every((row: string) => row.split("\t").length === 11)).toBe(true);
-    expect(rows.every((row: string) => row.split("\t")[10] === "\u8109\u8109")).toBe(true);
-    dispose();
   });
 
   it("does not mount a button for a partial nested communication label", () => {

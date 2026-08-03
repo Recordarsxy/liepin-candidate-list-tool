@@ -7,8 +7,11 @@ import {
 
 const PERIOD = /(?:19|20)\d{2}[./-]\d{1,2}\s*[-—–]\s*(?:至今|(?:19|20)\d{2}[./-]\d{1,2})/;
 const COMMUNICATION_TEXTS = new Set(["立即沟通", "沟通"]);
-const EDUCATION_DEGREES = new Set(["硕士", "本科"]);
-const ACTIVITY_LABELS = new Set(["近一周活跃", "本科", "硕士"]);
+const EDUCATION_DEGREES = new Set(["大专", "本科", "硕士", "博士"]);
+const EXPERIENCE = /^\d+\s*年$/;
+const EXPECTATION = /^期望[：:]/;
+const PROFILE_STATUS = /活跃|求职|机会|动向|招聘动态|关注行情|简历/;
+const DISPLAY_NAME = /^[\u3400-\u9fff]{1,4}(?:[＊*？?]+)?$/u;
 
 type HistoryRow = {
   period: string;
@@ -27,7 +30,7 @@ export function findMaimaiCards(root: ParentNode): HTMLElement[] {
     let candidate = action.parentElement;
     while (candidate && candidate !== root) {
       const actionCount = visibleCommunicationActions(candidate).length;
-      if (actionCount === 1 && hasCandidateRowMarkers(candidate)) {
+      if (actionCount === 1 && hasCandidateSignature(candidate)) {
         if (!cards.includes(candidate)) cards.push(candidate);
         break;
       }
@@ -40,14 +43,14 @@ export function findMaimaiCards(root: ParentNode): HTMLElement[] {
 export function parseMaimaiCard(card: HTMLElement): CandidateDraft | null {
   const tokens = visibleLeafTexts(card);
   const ageIndex = tokens.findIndex((token) => normalizeAge(token) !== "");
-  const expectationIndex = tokens.findIndex((token) => /^期望[：:]/.test(token));
-  const name = findNameBeforeAge(tokens, ageIndex);
+  const expectationIndex = tokens.findIndex((token) => EXPECTATION.test(token));
+  const name = findProfileName(tokens);
   const gender = findGender(card);
   const histories = findHistoryRows(card);
   const currentWork = histories.find((row) => !EDUCATION_DEGREES.has(row.degree));
   const master = histories.find((row) => row.degree === "硕士");
   const bachelor = histories.find((row) => row.degree === "本科");
-  const currentLocation = findCurrentLocation(tokens, ageIndex, expectationIndex);
+  const currentLocation = findCurrentLocation(tokens, name, ageIndex, expectationIndex);
   const preferredLocation = expectationIndex === -1 ? "" : normalizeCityLevelLocation(tokens[expectationIndex + 1] ?? "");
   const currentRole = currentWork?.subject ?? "";
 
@@ -69,16 +72,23 @@ export function parseMaimaiCard(card: HTMLElement): CandidateDraft | null {
   };
 }
 
-function findNameBeforeAge(tokens: string[], ageIndex: number): string {
-  if (ageIndex === -1) return "";
+function findProfileName(tokens: string[]): string {
+  const boundaryIndex = tokens.findIndex(isProfileBoundary);
   return (
     tokens
-      .slice(0, ageIndex)
-      .filter(
-        (token) =>
-          !ACTIVITY_LABELS.has(token) && /^[\u3400-\u9fff]{1,4}(?:[＊*？]+)?$/u.test(token),
-      )
+      .slice(0, boundaryIndex === -1 ? undefined : boundaryIndex)
+      .filter((token) => DISPLAY_NAME.test(token) && !PROFILE_STATUS.test(token))
       .at(-1) ?? ""
+  );
+}
+
+function isProfileBoundary(token: string): boolean {
+  return (
+    normalizeAge(token) !== "" ||
+    EXPERIENCE.test(token) ||
+    EDUCATION_DEGREES.has(token) ||
+    EXPECTATION.test(token) ||
+    PERIOD.test(token)
   );
 }
 
@@ -91,11 +101,42 @@ function findGender(card: HTMLElement): "" | "男" | "女" {
   return "";
 }
 
-function findCurrentLocation(tokens: string[], ageIndex: number, expectationIndex: number): string {
-  const summary = tokens.slice(ageIndex + 1, expectationIndex === -1 ? undefined : expectationIndex);
+function findCurrentLocation(
+  tokens: string[],
+  name: string,
+  ageIndex: number,
+  expectationIndex: number,
+): string {
+  const timelineIndex = tokens.findIndex((token) => PERIOD.test(token));
+  const summaryEnd = Math.min(
+    expectationIndex === -1 ? tokens.length : expectationIndex,
+    timelineIndex === -1 ? tokens.length : timelineIndex,
+  );
+  const educationIndex = tokens.findIndex(
+    (token, index) => index < summaryEnd && EDUCATION_DEGREES.has(token),
+  );
+  if (educationIndex !== -1) {
+    const location = findLocationIn(tokens.slice(educationIndex + 1, summaryEnd), name);
+    if (location) return location;
+  }
+  if (ageIndex === -1) return "";
+  return findLocationIn(tokens.slice(ageIndex + 1, summaryEnd), name);
+}
+
+function findLocationIn(tokens: string[], name: string): string {
   return (
-    summary
-      .filter((token) => !/^\d+年$/.test(token) && !EDUCATION_DEGREES.has(token))
+    tokens
+      .filter(
+        (token) =>
+          token !== name &&
+          !PROFILE_STATUS.test(token) &&
+          normalizeAge(token) === "" &&
+          !EXPERIENCE.test(token) &&
+          !EDUCATION_DEGREES.has(token) &&
+          !EXPECTATION.test(token) &&
+          !PERIOD.test(token) &&
+          !COMMUNICATION_TEXTS.has(token),
+      )
       .map(normalizeCityLevelLocation)
       .find(Boolean) ?? ""
   );
@@ -137,7 +178,7 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
     while (action.parentElement && action.parentElement !== root) {
       if (hasIndependentVisibleSibling(action)) break;
       if (visibleTextFromNodes(action.parentElement) !== label) {
-        acceptsExactLabel = hasCandidateRowMarkers(action.parentElement);
+        acceptsExactLabel = hasCandidateSignature(action.parentElement);
         break;
       }
       action = action.parentElement;
@@ -161,9 +202,15 @@ function visibleTextFromNodes(element: HTMLElement): string {
   return texts.join(" ");
 }
 
-function hasCandidateRowMarkers(root: ParentNode): boolean {
-  const text = visibleLeafTexts(root).join(" ");
-  return /\d{1,3}\s*岁/.test(text) && /期望[：:]/.test(text);
+function hasCandidateSignature(root: ParentNode): boolean {
+  const tokens = visibleLeafTexts(root);
+  return (
+    findProfileName(tokens) !== "" &&
+    tokens.some(
+      (token) =>
+        normalizeAge(token) !== "" || EXPECTATION.test(token) || PERIOD.test(token),
+    )
+  );
 }
 
 function hasIndependentVisibleSibling(element: HTMLElement): boolean {
