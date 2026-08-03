@@ -26,6 +26,31 @@ const parseCard = (card: HTMLElement): CandidateDraft | null =>
   card.dataset.card ? makeDraft(card.dataset.card) : null;
 
 describe("card buttons", () => {
+  it("mounts a card button before its provided action anchor", () => {
+    document.body.innerHTML = `
+      <article data-card="1">
+        <div><button data-action-anchor type="button">沟通</button></div>
+      </article>`;
+    const dispose = installCardButtons({
+      root: document,
+      findCards,
+      parseCard,
+      copy: vi.fn(),
+      mountButton: (card, button) => {
+        const action = card.querySelector<HTMLButtonElement>("[data-action-anchor]")!;
+        action.parentElement!.insertBefore(button, action);
+      },
+    });
+    const button = document.querySelector<HTMLButtonElement>(
+      "[data-candidate-collector-button]",
+    )!;
+
+    expect(button.nextElementSibling).toMatchObject({
+      dataset: { actionAnchor: "" },
+    });
+    dispose();
+  });
+
   it("selects two cards and copies two eleven-column rows", async () => {
     document.body.innerHTML = `<article data-card="1"></article><article data-card="2"></article>`;
     const copy = vi.fn().mockResolvedValue(undefined);

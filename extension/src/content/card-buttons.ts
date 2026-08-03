@@ -6,6 +6,7 @@ type Options = {
   findCards: (root: ParentNode) => HTMLElement[];
   parseCard: (card: HTMLElement) => CandidateDraft | null;
   copy: (text: string) => Promise<void>;
+  mountButton?: (card: HTMLElement, button: HTMLButtonElement) => void;
 };
 
 const BUTTON_ATTRIBUTE = "data-candidate-collector-button";
@@ -80,7 +81,8 @@ export function installCardButtons(options: Options): () => void {
         else button.removeAttribute(SELECTED_ATTRIBUTE);
         renderToolbar();
       });
-      card.append(button);
+      if (options.mountButton) options.mountButton(card, button);
+      else card.append(button);
     }
   };
 

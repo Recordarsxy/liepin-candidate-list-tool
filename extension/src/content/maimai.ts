@@ -1,4 +1,8 @@
-import { findMaimaiCards, parseMaimaiCard } from "../maimai/card-parser";
+import {
+  findMaimaiCards,
+  findMaimaiCommunicationAction,
+  parseMaimaiCard,
+} from "../maimai/card-parser";
 import { installCardButtons } from "./card-buttons";
 import {
   installCollectorToggle,
@@ -16,6 +20,16 @@ export function installMaimaiCardButtons(
     findCards: findMaimaiCards,
     parseCard: parseMaimaiCard,
     copy: writeText,
+    mountButton: (card, button) => {
+      const action = findMaimaiCommunicationAction(card);
+      if (!action?.parentElement) {
+        card.append(button);
+        return;
+      }
+      button.style.transform = "none";
+      button.style.margin = "0 8px 0 0";
+      action.parentElement.insertBefore(button, action);
+    },
   });
 }
 
