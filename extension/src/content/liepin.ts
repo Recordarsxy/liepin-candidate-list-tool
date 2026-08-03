@@ -1,0 +1,48 @@
+import { CAPTURE_MESSAGE } from "../contracts/messages";
+import { installCardButtons } from "./card-buttons";
+import { findLiepinCards, parseLiepinCard } from "../liepin/card-parser";
+import {
+  installCollectorToggle,
+  type StorageChangeListener,
+} from "./collector-toggle";
+
+type SendMessage = (message: unknown) => Promise<unknown>;
+
+export function installLiepinCardButtons(
+  root: Document,
+  sendMessage: SendMessage,
+): () => void {
+  return installCardButtons({
+    root,
+    findCards: findLiepinCards,
+    parseCard: parseLiepinCard,
+    capture: async (capture) => {
+      await sendMessage({ type: CAPTURE_MESSAGE, capture });
+    },
+  });
+}
+
+declare const chrome:
+  | {
+      runtime: { sendMessage: SendMessage };
+      storage: {
+        local: { get: (key: string) => Promise<Record<string, unknown>> };
+        onChanged: {
+          addListener: (listener: StorageChangeListener) => void;
+          removeListener: (listener: StorageChangeListener) => void;
+        };
+      };
+    }
+  | undefined;
+
+if (typeof chrome !== "undefined") {
+  void installCollectorToggle({
+    storage: chrome.storage.local,
+    changes: chrome.storage.onChanged,
+    install: () =>
+      installLiepinCardButtons(
+        document,
+        chrome.runtime.sendMessage.bind(chrome.runtime),
+      ),
+  });
+}
