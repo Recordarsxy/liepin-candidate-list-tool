@@ -4,7 +4,7 @@
 
 **Goal:** Always mount one collection button beside every visible exact Maimai communication action, then parse candidate data on click with missing fields left blank.
 
-**Architecture:** Separate action discovery from candidate parsing. `findMaimaiCards` returns every exact visible communication action without checking candidate fields or element tags; the generic installer marks each returned action as mounted so siblings sharing a parent stay distinct. `parseMaimaiCard` climbs from that action and selects the safest complete candidate row—preferring an ancestor with timeline evidence and otherwise the named ancestor with the highest detail score—while stopping at shared multi-action containers.
+**Architecture:** Separate action discovery from candidate parsing. `findMaimaiCards` returns every exact visible communication action without checking candidate fields or element tags; the generic installer marks each returned action as mounted so siblings sharing a parent stay distinct. `parseMaimaiCard` climbs from that action and selects the named safe ancestor with the highest profile/timeline detail score, then parses gender from explicit honorifics or avatar badge colors and parses history from minimal visible elements with complete or split period text.
 
 **Tech Stack:** Chrome MV3, TypeScript, Vitest, jsdom, Vite
 
@@ -45,7 +45,7 @@ Expected: the new no-marker row assertions fail because `findMaimaiCards` curren
 
 - [ ] **Step 3: Implement the minimal action-first behavior**
 
-In `visibleCommunicationActions`, stop requiring `hasCandidateSignature` or element tags. In `findMaimaiCards`, return every exact action element. Mark each source action with `data-candidate-collector-mounted` in the generic installer so sibling actions do not collapse or receive duplicates. Add a resolver used by `parseMaimaiCard` that climbs through named ancestors, prefers the first ancestor containing `PERIOD`, otherwise keeps the highest-scoring age/experience/education/expectation ancestor, stops before shared multi-action containers and `body/html`, and excludes communication labels and collector UI from name candidates. Relax the final parse guard to require only a reliable name; keep missing work and education fields empty.
+In `visibleCommunicationActions`, stop requiring `hasCandidateSignature` or element tags. In `findMaimaiCards`, return every exact action element. Mark each source action with `data-candidate-collector-mounted` in the generic installer so sibling actions do not collapse or receive duplicates. Add a resolver used by `parseMaimaiCard` that climbs through named ancestors, scores every age/experience/education/expectation/period token, keeps the richest safe ancestor, stops before shared multi-action containers and `body/html`, and excludes communication labels and collector UI from name candidates. Infer gender from `先生/女士`, then from visible avatar SVG computed colors. Parse minimal history elements across all tags and accept period text split across up to three leaf tokens. Relax the final parse guard to require only a reliable name; keep missing work and education fields empty.
 
 - [ ] **Step 4: Verify focused and full GREEN**
 

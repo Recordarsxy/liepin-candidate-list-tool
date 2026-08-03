@@ -222,6 +222,60 @@ describe("Maimai card parser", () => {
     });
   });
 
+  it("reads a red CSS avatar badge and split list-item work and education rows", () => {
+    document.body.innerHTML = `
+      <section class="full-row">
+        <div class="identity-shell">
+          <div class="avatar"><img src="avatar.png"><svg><path style="fill: rgb(255, 88, 51)"></path></svg></div>
+          <strong>杜秋萱</strong><span class="ordinary">立即沟通</span>
+        </div>
+        <div><span>34岁</span><span>12年</span><span>硕士</span><span>北京海淀区</span></div>
+        <ul>
+          <li><span>2016.10</span><span>-</span><span>2019.09</span><span>国富基金</span><span>高级项目经理</span></li>
+          <li><span>2014.09</span><span>-</span><span>2016.06</span><span>清华大学</span><span>金融学</span><span>硕士</span></li>
+          <li><span>2010.09</span><span>-</span><span>2014.06</span><span>清华大学</span><span>经济学</span><span>本科</span></li>
+        </ul>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({
+      name: "杜秋萱",
+      gender: "女",
+      age: "34",
+      current_location: "北京",
+      current_company: "国富基金",
+      current_role: "高级项目经理",
+      master_school: "清华大学",
+      bachelor_school: "清华大学",
+      bachelor_start_year: "2010",
+    });
+  });
+
+  it("reads a blue CSS avatar badge as male", () => {
+    document.body.innerHTML = `
+      <section>
+        <div class="avatar"><img src="avatar.png"><svg><circle style="stroke: #085DFF"></circle></svg></div>
+        <strong>张也冰</strong><span class="ordinary">沟通</span>
+        <div><span>2020.08 - 2023.01</span><span>示例公司</span><span>机构销售</span></div>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({ name: "张也冰", gender: "男" });
+  });
+
+  it("uses an explicit name honorific when no badge color is available", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>杨先生</strong><span class="ordinary">沟通</span>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({ name: "杨先生", gender: "男" });
+  });
+
   it("separates name and location in a timeline-only sparse row", () => {
     document.body.innerHTML = `
       <section>
@@ -338,7 +392,7 @@ describe("Maimai card parser", () => {
     document.body.innerHTML = `
       <section>
         <div style="visibility: hidden"><svg><path fill="#085DFF"></path></svg></div>
-        <strong>王先生</strong><span>29岁</span><span>北京</span>
+        <strong>王小明</strong><span>29岁</span><span>北京</span>
         <span>期望：</span><span>北京</span><span>20k-30k</span><span>解决方案顾问</span>
         <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
         <button>立即沟通</button>

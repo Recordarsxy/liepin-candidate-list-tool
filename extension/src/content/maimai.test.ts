@@ -44,7 +44,7 @@ describe("Maimai content script", () => {
       expect(rows.every((row: string) => row.split("\t")[10] === "\u8109\u8109")).toBe(true);
       const cells = rows.map((row: string) => row.split("\t"));
       expect(cells[0].slice(1, 6)).toEqual(["陈先生", "男", "", "北京", "北京"]);
-      expect(cells[1].slice(1, 6)).toEqual(["周女士", "", "34", "西安", ""]);
+      expect(cells[1].slice(1, 6)).toEqual(["周女士", "女", "34", "西安", ""]);
     } finally {
       dispose();
     }
@@ -114,7 +114,7 @@ describe("Maimai content script", () => {
       const cells = writeText.mock.calls[0][0].split("\t");
       expect(cells).toHaveLength(11);
       expect(cells[1]).toBe("王先生");
-      expect(cells.slice(2, 10)).toEqual(["", "", "", "", "", "", "", ""]);
+      expect(cells.slice(2, 10)).toEqual(["男", "", "", "", "", "", "", ""]);
       expect(cells[10]).toBe("脉脉");
     } finally {
       dispose();

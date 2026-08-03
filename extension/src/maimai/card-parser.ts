@@ -43,7 +43,7 @@ export function parseMaimaiCard(card: HTMLElement): CandidateDraft | null {
   const ageIndex = tokens.findIndex((token) => normalizeAge(token) !== "");
   const expectationIndex = tokens.findIndex((token) => EXPECTATION.test(token));
   const name = findProfileName(tokens);
-  const gender = findGender(candidate);
+  const gender = findGender(candidate, name);
   const histories = findHistoryRows(candidate);
   const currentWork = histories.find((row) => !EDUCATION_DEGREES.has(row.degree));
   const master = histories.find((row) => row.degree === "硕士");
@@ -103,14 +103,12 @@ function findNamedCandidateRoot(start: HTMLElement): HTMLElement {
       best = candidate;
       bestScore = score;
     }
-    if (tokens.some((token) => PERIOD.test(token))) return candidate;
   }
   return best ?? start;
 }
 
 function candidateDetailScore(tokens: string[]): number {
-  return tokens.reduce((score, token) => {
-    if (PERIOD.test(token)) return score + 4;
+  return findPeriodSpans(tokens).length * 4 + tokens.reduce((score, token) => {
     if (
       normalizeAge(token) !== "" ||
       EXPERIENCE.test(token) ||
@@ -133,12 +131,79 @@ function isProfileBoundary(token: string): boolean {
   );
 }
 
-function findGender(card: HTMLElement): "" | "男" | "女" {
-  const fills = Array.from(card.querySelectorAll<SVGElement>("svg [fill]"))
-    .filter(isVisible)
-    .map((element) => element.getAttribute("fill"));
-  if (fills.includes("#FF5833")) return "女";
-  if (fills.includes("#085DFF")) return "男";
+function findGender(card: HTMLElement, name: string): "" | "男" | "女" {
+  if (name.endsWith("女士")) return "女";
+  if (name.endsWith("先生")) return "男";
+
+  const nameElement = Array.from(card.querySelectorAll<HTMLElement>("*"))
+    .find((element) => isVisible(element) && visibleText(element) === name);
+  const avatar = nameElement
+    ? Array.from(card.querySelectorAll<HTMLImageElement>("img"))
+        .filter((image) => isVisible(image) && comesBefore(image, nameElement))
+        .at(-1)
+    : undefined;
+  const region = avatar?.parentElement ?? card;
+  const coloredElements = Array.from(
+    region.querySelectorAll<SVGElement>("svg,svg *"),
+  ).filter(
+    (element) =>
+      isVisible(element) &&
+      (!nameElement || region !== card || comesBefore(element, nameElement)),
+  );
+
+  for (const element of coloredElements) {
+    const styles = element.ownerDocument.defaultView?.getComputedStyle(element);
+    const colors = [
+      element.getAttribute("fill"),
+      element.getAttribute("stroke"),
+      styles?.fill,
+      styles?.stroke,
+      styles?.color,
+      styles?.backgroundColor,
+    ];
+    for (const color of colors) {
+      const gender = genderFromColor(color ?? "");
+      if (gender) return gender;
+    }
+  }
+  return "";
+}
+
+function comesBefore(element: Element, reference: Element): boolean {
+  return Boolean(
+    element.compareDocumentPosition(reference) & Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+}
+
+function genderFromColor(color: string): "" | "男" | "女" {
+  const normalized = color.trim().toLowerCase();
+  if (!normalized || normalized === "none" || normalized === "transparent") return "";
+
+  const hex = normalized.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i)?.[1];
+  const rgb = normalized.match(
+    /^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*,\s*(\d+(?:\.\d+)?))?\s*\)$/i,
+  );
+  let red: number;
+  let green: number;
+  let blue: number;
+  if (hex) {
+    const expanded = hex.length === 3
+      ? hex.split("").map((digit) => digit + digit).join("")
+      : hex.slice(0, 6);
+    red = Number.parseInt(expanded.slice(0, 2), 16);
+    green = Number.parseInt(expanded.slice(2, 4), 16);
+    blue = Number.parseInt(expanded.slice(4, 6), 16);
+  } else if (rgb) {
+    if (rgb[4] !== undefined && Number(rgb[4]) === 0) return "";
+    red = Number(rgb[1]);
+    green = Number(rgb[2]);
+    blue = Number(rgb[3]);
+  } else {
+    return "";
+  }
+
+  if (red >= 140 && red > green * 1.25 && red > blue * 1.25) return "女";
+  if (blue >= 100 && blue > red * 1.25 && blue > green * 1.1) return "男";
   return "";
 }
 
@@ -189,16 +254,53 @@ function findLocationIn(tokens: string[], name: string): string {
 }
 
 function findHistoryRows(card: HTMLElement): HistoryRow[] {
-  return Array.from(card.querySelectorAll<HTMLElement>("div"))
-    .map((element) => visibleLeafTexts(element))
-    .filter((tokens) => tokens.filter((token) => PERIOD.test(token)).length === 1)
-    .map((tokens) => {
-      const periodIndex = tokens.findIndex((token) => PERIOD.test(token));
-      const fields = tokens.slice(periodIndex + 1);
+  const candidates = Array.from(card.querySelectorAll<HTMLElement>("*"))
+    .map((element) => {
+      const tokens = visibleLeafTexts(element);
+      const periods = findPeriodSpans(tokens);
+      if (periods.length !== 1) return null;
+      const fields = tokens.slice(periods[0].end + 1);
+      if (!fields.length) return null;
       const degree = fields.find((field) => EDUCATION_DEGREES.has(field)) ?? "";
       const [organization = "", subject = ""] = fields.filter((field) => field !== degree);
-      return { period: tokens[periodIndex], organization, subject, degree };
-    });
+      return {
+        element,
+        row: { period: periods[0].period, organization, subject, degree },
+      };
+    })
+    .filter((candidate): candidate is { element: HTMLElement; row: HistoryRow } => Boolean(candidate));
+
+  return candidates
+    .filter(
+      (candidate) =>
+        !candidates.some(
+          (nested) =>
+            nested !== candidate &&
+            candidate.element.contains(nested.element) &&
+            nested.row.period === candidate.row.period,
+        ),
+    )
+    .map((candidate) => candidate.row);
+}
+
+function findPeriodSpans(tokens: string[]): Array<{
+  period: string;
+  start: number;
+  end: number;
+}> {
+  const spans: Array<{ period: string; start: number; end: number }> = [];
+  const exactPeriod = new RegExp(`^(?:${PERIOD.source})$`);
+
+  for (let start = 0; start < tokens.length; start += 1) {
+    for (let end = start; end < Math.min(tokens.length, start + 3); end += 1) {
+      const combined = tokens.slice(start, end + 1).join(" ").trim();
+      if (!exactPeriod.test(combined)) continue;
+      spans.push({ period: combined, start, end });
+      start = end;
+      break;
+    }
+  }
+  return spans;
 }
 
 function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
