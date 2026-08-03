@@ -18,7 +18,7 @@ export async function mountSidePanel(
   heading.textContent = "候选人复制工具";
   const instructions = document.createElement("p");
   instructions.textContent =
-    "点击猎聘或脉脉卡片上的“复制候选人”，再到钉钉表格第一列粘贴。缺失字段会保持空白。";
+    "依次点击猎聘或脉脉卡片上的“加入批量”，再点击页面批量栏中的“复制全部”，最后到钉钉表格第一列粘贴。复制成功后页面选择会自动清空，缺失字段保持空白。";
   root.replaceChildren(toggle, heading, instructions);
 }
 

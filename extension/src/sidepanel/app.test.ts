@@ -19,7 +19,8 @@ describe("clipboard side panel", () => {
     )!;
     expect(root.firstElementChild).toBe(toggle.parentElement);
     expect(toggle.textContent).toBe("采集已开启");
-    expect(root.textContent).toContain("点击猎聘或脉脉卡片上的“复制候选人”");
+    expect(root.textContent).toContain("依次点击猎聘或脉脉卡片上的“加入批量”");
+    expect(root.textContent).toContain("点击页面批量栏中的“复制全部”");
 
     toggle.click();
     await vi.waitFor(() =>
