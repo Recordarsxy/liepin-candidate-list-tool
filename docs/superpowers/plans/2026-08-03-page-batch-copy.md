@@ -17,6 +17,7 @@
 - Clipboard success clears the page queue immediately; clipboard failure preserves it.
 - Refresh, navigation, tab close, collector disable, or disposer invocation clears the queue and removes the toolbar.
 - Apply the same component to Liepin and Maimai.
+- Shift card buttons left by 24px with `z-index: 1`; place the batch bar 24px from the right/bottom with `z-index: 900`, never `2147483647`.
 
 ---
 
@@ -165,6 +166,8 @@ expect(document.querySelector("[data-candidate-collector-batch]")).toBeNull();
 
 Add tests that a second card click cancels it, manual `清空` resets all buttons, clipboard rejection keeps count/buttons and changes the copy action to `重试`, unparseable cards remain disabled, dynamic cards receive buttons, and disposer removes both buttons and toolbar.
 
+Assert the card button uses `transform: translateX(-24px)`, `position: relative`, and `z-index: 1`, and does not contain `2147483647`.
+
 - [ ] **Step 2: Run the focused UI tests and verify red**
 
 Run: `Set-Location extension; npm.cmd test -- --run src/content/card-buttons.test.ts`
@@ -180,6 +183,8 @@ Keep the existing `MutationObserver`, card guard, `preventDefault`, `stopPropaga
 - [ ] **Step 4: Implement the fixed batch toolbar**
 
 Create a single element with `data-candidate-collector-batch="true"` and fixed bottom-right styling. It contains a count, a `data-action="copy-batch"` button, and a `data-action="clear-batch"` button.
+
+Use `right: 24px`, `bottom: 24px`, and `z-index: 900` so the bar sits inside the viewport and below normal site dialogs.
 
 The copy handler must capture the non-empty batch text, disable the copy action, and then:
 
