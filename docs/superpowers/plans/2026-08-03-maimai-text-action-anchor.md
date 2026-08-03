@@ -12,9 +12,9 @@
 
 - Accept only visible exact labels `立即沟通` and `沟通`; partial text matches are not action anchors.
 - Do not require the action control to be `button`, `a`, or `[role=button]`.
-- Expand to the outermost continuous ancestor whose visible text is exactly the same label. Allow textless decorative siblings inside the control, but stop before an ancestor containing a separate visible interactive sibling such as a phone or menu control. At the first non-exact ancestor, accept the current action only when that ancestor has the existing visible candidate-row markers (age plus expectation); otherwise reject the partial anchor. Insert `加入批量` before that outer communication control, never inside it or before the whole action group.
+- Expand to the outermost continuous ancestor whose visible text is exactly the same label. Allow textless decorative siblings inside the control, but stop before an ancestor containing a separate visible interactive sibling such as a phone or menu control. At the first non-exact ancestor, accept the current action only when that ancestor has a reliable display name before its profile/timeline boundary and at least one visible candidate evidence item: age, expectation, or a work/education timeline period. Otherwise reject the partial anchor. Insert `加入批量` before that outer communication control, never inside it or before the whole action group.
 - Hidden text nodes and controls must not create cards or buttons.
-- Keep the existing age-plus-expectation candidate-row gate, visible-only field parsing, fixed 11-column TSV order, Liepin behavior, queue behavior, and clipboard behavior unchanged.
+- Keep visible-only field parsing, fixed 11-column TSV order, Liepin behavior, queue behavior, and clipboard behavior unchanged. Age and expectation are independently optional and produce empty output cells when absent.
 - Do not automate Maimai acceptance; the user performs the final authenticated-page check manually.
 
 ---
@@ -136,7 +136,11 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
 
 Before expanding from `action` to `action.parentElement`, inspect the parent's other direct children. Ignore hidden children, `aria-hidden="true"` decoration, and textless non-interactive elements. Stop when another visible sibling is an independent control: `button`, `a`, `input`, `select`, `textarea`, `[role="button"]`, `[role="link"]`, a non-negative `[tabindex]`, or an element carrying a non-empty `aria-label`. This permits icons/badges inside the communication control while preventing expansion into the phone/menu action group.
 
-Do not require the resolved action itself to satisfy `isIndependentControl`. At the first ancestor whose visible text differs from the label, compute that ancestor's visible leaf text. If it contains both `/\d{1,3}\s*岁/` and `/期望[：:]/`, treat it as the semantic candidate-row boundary and accept the current action. Otherwise reject the anchor as a partial label inside an intermediate control. Add parser and content tests for both a direct ordinary `<div>沟通</div>` under a valid candidate row (accepted and mounted before it) and `<div><span>立即沟通</span><span>更多</span></div>` (rejected with no injected button).
+Do not require the resolved action itself to satisfy `isIndependentControl`. At the first ancestor whose visible text differs from the label, compute that ancestor's visible leaf tokens. Accept it as the candidate-row boundary only when a reliable display name appears before the first profile/timeline boundary and at least one of these is visible: an age token accepted by `normalizeAge`, an expectation marker `/期望[：:]/`, or a timeline token accepted by `PERIOD`. Otherwise reject the anchor as a partial label inside an intermediate control. Reuse this candidate signature in `findMaimaiCards`.
+
+Replace the age-dependent `findNameBeforeAge` with `findProfileName(tokens)`. Its boundary is the earliest age, experience token such as `12年`, education level (`大专/本科/硕士/博士`), expectation marker, or `PERIOD`. Before that boundary, choose the last short Chinese/masked-name token after excluding status text matching `活跃|求职|机会|动向|招聘动态|关注行情|简历`. For current location, prefer the first normalizable location after the visible education-level token and before expectation; otherwise scan after age while excluding experience, degree, name, and status tokens. Never use the name as a location.
+
+Change the anonymous two-row fixture to represent the screenshot: row one has no age but has experience, degree, location, expectation, and history; row two has age, experience, degree, location, and history but no expectation. Add parser assertions that both rows are discovered, names are preserved, row one `age` is empty, row two `preferred_location` is empty, and both current locations normalize to city level. Keep the content test selecting/copying both rows.
 
 - [ ] **Step 6: Run focused and full tests and verify GREEN**
 
