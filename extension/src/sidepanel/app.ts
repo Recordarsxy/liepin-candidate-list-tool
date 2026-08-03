@@ -58,7 +58,9 @@ async function renderCollectorToggle(storage: Storage): Promise<HTMLElement> {
   error.dataset.role = "collector-toggle-error";
   button.type = "button";
   button.dataset.action = "toggle-collector";
-  const stored = await storage.get(COLLECTOR_ENABLED_KEY).catch(() => ({}));
+  const stored = await storage
+    .get(COLLECTOR_ENABLED_KEY)
+    .catch((): Record<string, unknown> => ({}));
   let enabled = stored[COLLECTOR_ENABLED_KEY] !== false;
   const render = () => {
     button.textContent = enabled ? "采集已开启" : "采集已关闭";

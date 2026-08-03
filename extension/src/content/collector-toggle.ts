@@ -28,7 +28,7 @@ export async function installCollectorToggle(
   };
   const stored = await dependencies.storage
     .get(COLLECTOR_ENABLED_KEY)
-    .catch(() => ({}));
+    .catch((): Record<string, unknown> => ({}));
   apply(stored[COLLECTOR_ENABLED_KEY] !== false);
   dependencies.changes.addListener(listener);
   return () => {
