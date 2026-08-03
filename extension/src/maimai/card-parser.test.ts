@@ -252,6 +252,35 @@ describe("Maimai card parser", () => {
     });
   });
 
+  it("merges nested timeline fields and normalizes extended education labels", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>杜女士</strong><span class="ordinary">沟通</span>
+        <div class="work-row">
+          <div class="work-header"><span>2016.10 - 2019.09</span><span>国富基金</span></div>
+          <span>·</span><span>高级项目经理</span>
+        </div>
+        <div class="master-row">
+          <div class="education-header"><span>2014.09 - 2016.06</span><span>清华大学</span><span>金融学</span></div>
+          <span>硕士研究生</span>
+        </div>
+        <div class="bachelor-row">
+          <div class="education-header"><span>2010.09 - 2014.06</span><span>清华大学</span><span>经济学</span></div>
+          <span>本科统招</span>
+        </div>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({
+      current_company: "国富基金",
+      current_role: "高级项目经理",
+      master_school: "清华大学",
+      bachelor_school: "清华大学",
+      bachelor_start_year: "2010",
+    });
+  });
+
   it("reads a blue CSS avatar badge as male", () => {
     document.body.innerHTML = `
       <section>

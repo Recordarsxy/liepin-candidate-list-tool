@@ -125,7 +125,7 @@ function isProfileBoundary(token: string): boolean {
   return (
     normalizeAge(token) !== "" ||
     EXPERIENCE.test(token) ||
-    EDUCATION_DEGREES.has(token) ||
+    normalizeEducationDegree(token) !== "" ||
     EXPECTATION.test(token) ||
     PERIOD.test(token)
   );
@@ -228,7 +228,8 @@ function findCurrentLocation(
     timelineIndex === -1 ? tokens.length : timelineIndex,
   );
   const educationIndex = tokens.findIndex(
-    (token, index) => index < summaryEnd && EDUCATION_DEGREES.has(token),
+    (token, index) =>
+      index < summaryEnd && normalizeEducationDegree(token) !== "",
   );
   if (educationIndex !== -1) {
     const location = findLocationIn(tokens.slice(educationIndex + 1, summaryEnd), name);
@@ -252,7 +253,7 @@ function findLocationIn(tokens: string[], name: string): string {
           !PROFILE_STATUS.test(token) &&
           normalizeAge(token) === "" &&
           !EXPERIENCE.test(token) &&
-          !EDUCATION_DEGREES.has(token) &&
+          normalizeEducationDegree(token) === "" &&
           !EXPECTATION.test(token) &&
           !PERIOD.test(token) &&
           !COMMUNICATION_TEXTS.has(token),
@@ -270,26 +271,63 @@ function findHistoryRows(card: HTMLElement): HistoryRow[] {
       if (periods.length !== 1) return null;
       const fields = tokens.slice(periods[0].end + 1);
       if (!fields.length) return null;
-      const degree = fields.find((field) => EDUCATION_DEGREES.has(field)) ?? "";
-      const [organization = "", subject = ""] = fields.filter((field) => field !== degree);
+      const degreeField = fields.find(
+        (field) => normalizeEducationDegree(field) !== "",
+      );
+      const degree = degreeField ? normalizeEducationDegree(degreeField) : "";
+      const [organization = "", subject = ""] = fields.filter(
+        (field) => field !== degreeField && !isHistoryNoise(field),
+      );
       return {
         element,
         row: { period: periods[0].period, organization, subject, degree },
+        score:
+          (degree ? 3 : 0) +
+          (organization ? 1 : 0) +
+          (subject ? 1 : 0),
       };
     })
-    .filter((candidate): candidate is { element: HTMLElement; row: HistoryRow } => Boolean(candidate));
+    .filter(
+      (
+        candidate,
+      ): candidate is { element: HTMLElement; row: HistoryRow; score: number } =>
+        Boolean(candidate),
+    );
 
   return candidates
     .filter(
       (candidate) =>
         !candidates.some(
-          (nested) =>
-            nested !== candidate &&
-            candidate.element.contains(nested.element) &&
-            nested.row.period === candidate.row.period,
+          (other) =>
+            other !== candidate &&
+            other.row.period === candidate.row.period &&
+            (candidate.element.contains(other.element) ||
+              other.element.contains(candidate.element)) &&
+            (other.score > candidate.score ||
+              (other.score === candidate.score &&
+                candidate.element.contains(other.element))),
         ),
     )
     .map((candidate) => candidate.row);
+}
+
+function normalizeEducationDegree(field: string): string {
+  const value = field.trim();
+  if (/博士|ph\.?d/i.test(value)) return "博士";
+  if (/硕士|研究生|mba|emba|mpa|mpacc/i.test(value)) return "硕士";
+  if (/本科|学士/.test(value)) return "本科";
+  if (/大专|专科/.test(value)) return "大专";
+  return "";
+}
+
+function isHistoryNoise(field: string): boolean {
+  const value = field.trim();
+  return (
+    !value ||
+    /^[-—–·•|｜]+$/.test(value) ||
+    COMMUNICATION_TEXTS.has(value) ||
+    value === "更多"
+  );
 }
 
 function findPeriodSpans(tokens: string[]): Array<{
