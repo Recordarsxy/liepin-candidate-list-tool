@@ -12,7 +12,7 @@
 
 - Accept only visible exact labels `立即沟通` and `沟通`; partial text matches are not action anchors.
 - Do not require the action control to be `button`, `a`, or `[role=button]`.
-- Expand to the outermost continuous ancestor whose visible text is exactly the same label, and insert `加入批量` before that outer control, never inside it.
+- Expand to the outermost continuous ancestor whose visible text is exactly the same label. Allow textless decorative siblings inside the control, but stop before an ancestor containing a separate visible interactive sibling such as a phone or menu control. Insert `加入批量` before that outer communication control, never inside it or before the whole action group.
 - Hidden text nodes and controls must not create cards or buttons.
 - Keep the existing age-plus-expectation candidate-row gate, visible-only field parsing, fixed 11-column TSV order, Liepin behavior, queue behavior, and clipboard behavior unchanged.
 - Do not automate Maimai acceptance; the user performs the final authenticated-page check manually.
@@ -37,13 +37,13 @@ Replace each plain action button with an action group whose communication contro
 
 ```html
 <div class="ActionGroup_alpha">
-  <div class="CommunicationControl_alpha"><span>立即沟通</span></div>
-  <div class="PhoneControl_alpha" aria-label="phone"></div>
+  <div class="CommunicationControl_alpha"><span>立即沟通</span><svg aria-hidden="true"></svg></div>
+  <div class="PhoneControl_alpha" role="button" aria-label="phone"></div>
 </div>
 
 <div class="ActionGroup_beta">
-  <div class="CommunicationControl_beta"><span>沟通</span></div>
-  <div class="PhoneControl_beta" aria-label="phone"></div>
+  <div class="CommunicationControl_beta"><span>沟通</span><span class="DecorativeBadge_beta"></span></div>
+  <div class="PhoneControl_beta" role="button" aria-label="phone"></div>
 </div>
 ```
 
@@ -133,6 +133,8 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
 ```
 
 `visibleTextFromNodes(element)` must walk only visible descendant text nodes, normalize whitespace between their trimmed values, and return one string. Reuse `isVisible` so hidden descendants do not affect the exact-text expansion. Update `findMaimaiCards` and `findMaimaiCommunicationAction` to use `visibleCommunicationActions`; keep the existing single-action, age, and expectation checks unchanged.
+
+Before expanding from `action` to `action.parentElement`, inspect the parent's other direct children. Ignore hidden children, `aria-hidden="true"` decoration, and textless non-interactive elements. Stop when another visible sibling is an independent control: `button`, `a`, `input`, `select`, `textarea`, `[role="button"]`, `[role="link"]`, a non-negative `[tabindex]`, or an element carrying a non-empty `aria-label`. This permits icons/badges inside the communication control while preventing expansion into the phone/menu action group.
 
 - [ ] **Step 6: Run focused and full tests and verify GREEN**
 
