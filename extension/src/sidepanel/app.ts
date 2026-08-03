@@ -1,4 +1,4 @@
-import { PAIR_MESSAGE } from "../contracts/messages";
+import { PAIR_MESSAGE, requireRuntimeStatus } from "../contracts/messages";
 import { COLLECTOR_ENABLED_KEY } from "../content/collector-toggle";
 import {
   EDITABLE_FIELDS,
@@ -286,6 +286,9 @@ if (root && typeof chrome !== "undefined") {
   void mountSidePanel(root, {
     fetchImpl: globalThis.fetch,
     storage: chrome.storage.local,
-    pair: (code) => chrome.runtime.sendMessage({ type: PAIR_MESSAGE, code }),
+    pair: async (code) => {
+      const response = await chrome.runtime.sendMessage({ type: PAIR_MESSAGE, code });
+      requireRuntimeStatus(response, "paired");
+    },
   });
 }

@@ -1,4 +1,4 @@
-import { CAPTURE_MESSAGE } from "../contracts/messages";
+import { CAPTURE_MESSAGE, requireRuntimeStatus } from "../contracts/messages";
 import { installCardButtons } from "./card-buttons";
 import { findMaimaiCards, parseMaimaiCard } from "../maimai/card-parser";
 import {
@@ -17,7 +17,8 @@ export function installMaimaiCardButtons(
     findCards: findMaimaiCards,
     parseCard: parseMaimaiCard,
     capture: async (capture) => {
-      await sendMessage({ type: CAPTURE_MESSAGE, capture });
+      const response = await sendMessage({ type: CAPTURE_MESSAGE, capture });
+      requireRuntimeStatus(response, "stored");
     },
   });
 }

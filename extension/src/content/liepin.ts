@@ -1,4 +1,4 @@
-import { CAPTURE_MESSAGE } from "../contracts/messages";
+import { CAPTURE_MESSAGE, requireRuntimeStatus } from "../contracts/messages";
 import { installCardButtons } from "./card-buttons";
 import { findLiepinCards, parseLiepinCard } from "../liepin/card-parser";
 import {
@@ -17,7 +17,8 @@ export function installLiepinCardButtons(
     findCards: findLiepinCards,
     parseCard: parseLiepinCard,
     capture: async (capture) => {
-      await sendMessage({ type: CAPTURE_MESSAGE, capture });
+      const response = await sendMessage({ type: CAPTURE_MESSAGE, capture });
+      requireRuntimeStatus(response, "stored");
     },
   });
 }
