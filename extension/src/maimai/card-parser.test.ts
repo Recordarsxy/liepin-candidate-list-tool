@@ -41,6 +41,32 @@ describe("Maimai card parser", () => {
     expect(findMaimaiCommunicationAction(card)?.className).toBe("CommunicationControl");
   });
 
+  it("accepts an ordinary direct control at the candidate-row boundary", () => {
+    document.body.innerHTML = `
+      <section class="candidate-row">
+        <strong>王先生</strong><span>29岁</span><span>期望：</span>
+        <div class="ordinary">沟通</div>
+      </section>`;
+
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(1);
+    expect(findMaimaiCommunicationAction(cards[0])?.className).toBe("ordinary");
+  });
+
+  it("accepts a nested ordinary control with a decorative child", () => {
+    document.body.innerHTML = `
+      <section class="candidate-row">
+        <strong>王先生</strong><span>29岁</span><span>期望：</span>
+        <div class="ordinary"><span>立即沟通</span><svg aria-hidden="true"></svg></div>
+      </section>`;
+
+    const cards = findMaimaiCards(document);
+
+    expect(cards).toHaveLength(1);
+    expect(findMaimaiCommunicationAction(cards[0])?.className).toBe("ordinary");
+  });
+
   it("rejects a nested communication label whose parent has additional visible text", () => {
     document.body.innerHTML = `
       <section class="candidate-row">

@@ -61,4 +61,24 @@ describe("Maimai content script", () => {
       dispose();
     }
   });
+
+  it("mounts immediately before an ordinary direct control", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span>29岁</span><span>北京</span>
+        <span>期望：</span><span>北京</span><span>20k-30k</span><span>解决方案顾问</span>
+        <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
+        <div class="ordinary">沟通</div>
+      </section>`;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    const dispose = installMaimaiCardButtons(document, writeText);
+    const action = document.querySelector<HTMLElement>(".ordinary")!;
+    try {
+      expect(action.previousElementSibling).toMatchObject({ textContent: "加入批量" });
+      expect(action.querySelector("[data-candidate-collector-button]")).toBeNull();
+    } finally {
+      dispose();
+    }
+  });
 });

@@ -26,9 +26,8 @@ export function findMaimaiCards(root: ParentNode): HTMLElement[] {
   for (const action of visibleCommunicationActions(root)) {
     let candidate = action.parentElement;
     while (candidate && candidate !== root) {
-      const text = visibleLeafTexts(candidate).join(" ");
       const actionCount = visibleCommunicationActions(candidate).length;
-      if (actionCount === 1 && /\d{1,3}\s*岁/.test(text) && /期望[：:]/.test(text)) {
+      if (actionCount === 1 && hasCandidateRowMarkers(candidate)) {
         if (!cards.includes(candidate)) cards.push(candidate);
         break;
       }
@@ -138,7 +137,7 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
     while (action.parentElement && action.parentElement !== root) {
       if (hasIndependentVisibleSibling(action)) break;
       if (visibleTextFromNodes(action.parentElement) !== label) {
-        acceptsExactLabel = isIndependentControl(action);
+        acceptsExactLabel = hasCandidateRowMarkers(action.parentElement);
         break;
       }
       action = action.parentElement;
@@ -160,6 +159,11 @@ function visibleTextFromNodes(element: HTMLElement): string {
   }
 
   return texts.join(" ");
+}
+
+function hasCandidateRowMarkers(root: ParentNode): boolean {
+  const text = visibleLeafTexts(root).join(" ");
+  return /\d{1,3}\s*岁/.test(text) && /期望[：:]/.test(text);
 }
 
 function hasIndependentVisibleSibling(element: HTMLElement): boolean {
