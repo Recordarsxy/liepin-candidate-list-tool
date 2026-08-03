@@ -128,6 +128,24 @@ describe("Maimai card parser", () => {
     expect(findMaimaiCommunicationAction(cards[0])?.className).toBe("ordinary");
   });
 
+  it("separates name and location in a timeline-only sparse row", () => {
+    document.body.innerHTML = `
+      <section>
+        <strong>王先生</strong><span>北京</span>
+        <div><span>2022.03 - 至今</span><span>示例科技</span><span>行业顾问</span></div>
+        <div class="ordinary">沟通</div>
+      </section>`;
+
+    const card = findMaimaiCards(document)[0];
+
+    expect(parseMaimaiCard(card)).toMatchObject({
+      name: "王先生",
+      age: "",
+      current_location: "北京",
+      preferred_location: "",
+    });
+  });
+
   it("does not treat status text as a candidate name", () => {
     document.body.innerHTML = `
       <section>

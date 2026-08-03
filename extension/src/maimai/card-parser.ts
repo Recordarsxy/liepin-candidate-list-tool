@@ -12,6 +12,7 @@ const EXPERIENCE = /^\d+\s*年$/;
 const EXPECTATION = /^期望[：:]/;
 const PROFILE_STATUS = /活跃|求职|机会|动向|招聘动态|关注行情|简历/;
 const DISPLAY_NAME = /^[\u3400-\u9fff]{1,4}(?:[＊*？?]+)?$/u;
+const EXPLICIT_DISPLAY_NAME = /(?:先生|女士|[＊*？?]+)$/u;
 
 type HistoryRow = {
   period: string;
@@ -74,12 +75,10 @@ export function parseMaimaiCard(card: HTMLElement): CandidateDraft | null {
 
 function findProfileName(tokens: string[]): string {
   const boundaryIndex = tokens.findIndex(isProfileBoundary);
-  return (
-    tokens
-      .slice(0, boundaryIndex === -1 ? undefined : boundaryIndex)
-      .filter((token) => DISPLAY_NAME.test(token) && !PROFILE_STATUS.test(token))
-      .at(-1) ?? ""
-  );
+  const candidates = tokens
+    .slice(0, boundaryIndex === -1 ? undefined : boundaryIndex)
+    .filter((token) => DISPLAY_NAME.test(token) && !PROFILE_STATUS.test(token));
+  return candidates.find((token) => EXPLICIT_DISPLAY_NAME.test(token)) ?? candidates[0] ?? "";
 }
 
 function isProfileBoundary(token: string): boolean {
@@ -119,8 +118,13 @@ function findCurrentLocation(
     const location = findLocationIn(tokens.slice(educationIndex + 1, summaryEnd), name);
     if (location) return location;
   }
-  if (ageIndex === -1) return "";
-  return findLocationIn(tokens.slice(ageIndex + 1, summaryEnd), name);
+  if (ageIndex !== -1) {
+    return findLocationIn(tokens.slice(ageIndex + 1, summaryEnd), name);
+  }
+  const nameIndex = tokens.indexOf(name);
+  return nameIndex === -1
+    ? ""
+    : findLocationIn(tokens.slice(nameIndex + 1, summaryEnd), name);
 }
 
 function findLocationIn(tokens: string[], name: string): string {
