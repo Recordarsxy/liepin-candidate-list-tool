@@ -12,7 +12,7 @@
 
 - Accept only visible exact labels `立即沟通` and `沟通`; partial text matches are not action anchors.
 - Do not require the action control to be `button`, `a`, or `[role=button]`.
-- Expand to the outermost continuous ancestor whose visible text is exactly the same label. Allow textless decorative siblings inside the control, but stop before an ancestor containing a separate visible interactive sibling such as a phone or menu control. Insert `加入批量` before that outer communication control, never inside it or before the whole action group.
+- Expand to the outermost continuous ancestor whose visible text is exactly the same label. Allow textless decorative siblings inside the control, but stop before an ancestor containing a separate visible interactive sibling such as a phone or menu control. At the first non-exact ancestor, accept the current action only when that ancestor has the existing visible candidate-row markers (age plus expectation); otherwise reject the partial anchor. Insert `加入批量` before that outer communication control, never inside it or before the whole action group.
 - Hidden text nodes and controls must not create cards or buttons.
 - Keep the existing age-plus-expectation candidate-row gate, visible-only field parsing, fixed 11-column TSV order, Liepin behavior, queue behavior, and clipboard behavior unchanged.
 - Do not automate Maimai acceptance; the user performs the final authenticated-page check manually.
@@ -135,6 +135,8 @@ function visibleCommunicationActions(root: ParentNode): HTMLElement[] {
 `visibleTextFromNodes(element)` must walk only visible descendant text nodes, normalize whitespace between their trimmed values, and return one string. Reuse `isVisible` so hidden descendants do not affect the exact-text expansion. Update `findMaimaiCards` and `findMaimaiCommunicationAction` to use `visibleCommunicationActions`; keep the existing single-action, age, and expectation checks unchanged.
 
 Before expanding from `action` to `action.parentElement`, inspect the parent's other direct children. Ignore hidden children, `aria-hidden="true"` decoration, and textless non-interactive elements. Stop when another visible sibling is an independent control: `button`, `a`, `input`, `select`, `textarea`, `[role="button"]`, `[role="link"]`, a non-negative `[tabindex]`, or an element carrying a non-empty `aria-label`. This permits icons/badges inside the communication control while preventing expansion into the phone/menu action group.
+
+Do not require the resolved action itself to satisfy `isIndependentControl`. At the first ancestor whose visible text differs from the label, compute that ancestor's visible leaf text. If it contains both `/\d{1,3}\s*岁/` and `/期望[：:]/`, treat it as the semantic candidate-row boundary and accept the current action. Otherwise reject the anchor as a partial label inside an intermediate control. Add parser and content tests for both a direct ordinary `<div>沟通</div>` under a valid candidate row (accepted and mounted before it) and `<div><span>立即沟通</span><span>更多</span></div>` (rejected with no injected button).
 
 - [ ] **Step 6: Run focused and full tests and verify GREEN**
 
