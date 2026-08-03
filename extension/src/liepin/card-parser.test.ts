@@ -13,6 +13,7 @@ describe("Liepin card parser", () => {
     const card = document.querySelector<HTMLElement>(".live-card");
     const parsed = card ? parseLiepinCard(card) : null;
 
+    expect(findLiepinCards(document)).toEqual(card ? [card] : []);
     expect(parsed).toMatchObject({
       platform: "liepin",
       platform_candidate_id: "lp-live-1",

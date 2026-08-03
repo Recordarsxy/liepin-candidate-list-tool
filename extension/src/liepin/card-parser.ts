@@ -4,7 +4,7 @@ import { parseVisibleCard } from "../shared/card-fields";
 const CARD_SELECTORS = [
   "table.new-resume-card",
   "[data-liepin-candidate-id]",
-  '[class*="resume-card"]',
+  ".tlog-common-resume-card",
 ];
 
 export function findLiepinCards(root: ParentNode): HTMLElement[] {
