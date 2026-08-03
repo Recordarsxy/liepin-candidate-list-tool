@@ -70,6 +70,13 @@ class CandidateCapture(BaseModel):
     source_description: str = Field(default="visible DOM fields", max_length=500)
     field_missing: list[str] = Field(default_factory=list)
 
+    @field_validator("platform_candidate_id", mode="before")
+    @classmethod
+    def normalize_blank_platform_candidate_id(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
 
 class DetailQueueItem(BaseModel):
     model_config = ConfigDict(extra="forbid")

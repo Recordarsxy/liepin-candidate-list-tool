@@ -81,3 +81,26 @@ def test_missing_platform_id_is_needs_review_and_is_not_queued(tmp_path: Path) -
     assert response.status_code == 201
     assert response.json()["assessment"]["outcome"] == "needs_review"
     assert response.json()["queue_items"] == []
+
+
+def test_repeated_blank_or_whitespace_platform_ids_create_unqueued_review_records(tmp_path: Path) -> None:
+    app = create_app(tmp_path / "candidate-store.sqlite3")
+
+    responses = [
+        post_capture(
+            app,
+            {
+                "platform": "liepin",
+                "platform_candidate_id": platform_candidate_id,
+                "source_page_type": "list",
+                "current_company": "甲银行",
+                "current_role": "机构及同业渠道销售",
+            },
+        )
+        for platform_candidate_id in ("", "   ", "")
+    ]
+
+    assert [response.status_code for response in responses] == [201, 201, 201]
+    assert len({response.json()["candidate_id"] for response in responses}) == 3
+    assert all(response.json()["assessment"]["outcome"] == "needs_review" for response in responses)
+    assert all(response.json()["queue_items"] == [] for response in responses)
