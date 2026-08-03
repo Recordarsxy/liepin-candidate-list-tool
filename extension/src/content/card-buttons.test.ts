@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { CandidateDraft } from "../contracts/candidate";
+import { candidateToClipboardRow } from "../export/clipboard-row";
 import { installCardButtons } from "./card-buttons";
 
 const draft: CandidateDraft = {
@@ -19,42 +20,69 @@ const draft: CandidateDraft = {
   bachelor_start_year: "",
 };
 
+const findCards = (root: ParentNode): HTMLElement[] =>
+  Array.from(root.querySelectorAll<HTMLElement>("[data-card]"));
+
 describe("card buttons", () => {
-  it("injects once and captures only after the user clicks", async () => {
+  it("copies the clicked card and allows copying it again", async () => {
     document.body.innerHTML = `<article data-card="1"></article>`;
-    const capture = vi.fn().mockResolvedValue(undefined);
+    const copy = vi.fn().mockResolvedValue(undefined);
 
     const dispose = installCardButtons({
       root: document,
-      findCards: (root) => Array.from(root.querySelectorAll<HTMLElement>("[data-card]")),
+      findCards,
       parseCard: () => draft,
-      capture,
+      copy,
     });
-    const button = document.querySelector<HTMLButtonElement>("[data-candidate-collector-button]");
-    button?.click();
-    await Promise.resolve();
+    const button = document.querySelector<HTMLButtonElement>(
+      "[data-candidate-collector-button]",
+    )!;
+    expect(button.textContent).toBe("复制候选人");
+
+    button.click();
+    await vi.waitFor(() => expect(button.textContent).toBe("已复制"));
 
     expect(document.querySelectorAll("[data-candidate-collector-button]")).toHaveLength(1);
-    expect(capture).toHaveBeenCalledWith(draft);
-    expect(button?.textContent).toBe("已加入");
+    expect(copy).toHaveBeenCalledWith(candidateToClipboardRow(draft));
+    expect(button.disabled).toBe(false);
+
+    button.click();
+    await vi.waitFor(() => expect(copy).toHaveBeenCalledTimes(2));
     dispose();
   });
 
-  it("marks an unparseable card without sending an empty row", async () => {
+  it("marks an unparseable card without changing the clipboard", async () => {
     document.body.innerHTML = `<article data-card="1"></article>`;
-    const capture = vi.fn();
+    const copy = vi.fn();
     const dispose = installCardButtons({
       root: document,
-      findCards: (root) => Array.from(root.querySelectorAll<HTMLElement>("[data-card]")),
+      findCards,
       parseCard: () => null,
-      capture,
+      copy,
     });
 
     document.querySelector<HTMLButtonElement>("button")?.click();
     await Promise.resolve();
 
-    expect(capture).not.toHaveBeenCalled();
+    expect(copy).not.toHaveBeenCalled();
     expect(document.querySelector("button")?.textContent).toBe("暂时无法识别");
+    dispose();
+  });
+
+  it("injects a button into cards loaded later", async () => {
+    document.body.innerHTML = `<article data-card="1"></article>`;
+    const dispose = installCardButtons({
+      root: document,
+      findCards,
+      parseCard: () => draft,
+      copy: vi.fn(),
+    });
+
+    document.body.insertAdjacentHTML("beforeend", `<article data-card="2"></article>`);
+
+    await vi.waitFor(() =>
+      expect(document.querySelectorAll("[data-candidate-collector-button]")).toHaveLength(2),
+    );
     dispose();
   });
 
@@ -62,34 +90,31 @@ describe("card buttons", () => {
     document.body.innerHTML = `<article data-card="1"></article>`;
     const dispose = installCardButtons({
       root: document,
-      findCards: (root) =>
-        Array.from(root.querySelectorAll<HTMLElement>("[data-card]")),
+      findCards,
       parseCard: () => draft,
-      capture: vi.fn(),
+      copy: vi.fn(),
     });
 
     dispose();
 
-    expect(
-      document.querySelector("[data-candidate-collector-button]"),
-    ).toBeNull();
+    expect(document.querySelector("[data-candidate-collector-button]")).toBeNull();
   });
 
-  it("keeps the helper error on a retry button", async () => {
+  it("keeps the clipboard error on an enabled retry button", async () => {
     document.body.innerHTML = `<article data-card="1"></article>`;
     const dispose = installCardButtons({
       root: document,
-      findCards: (root) =>
-        Array.from(root.querySelectorAll<HTMLElement>("[data-card]")),
+      findCards,
       parseCard: () => draft,
-      capture: vi.fn().mockRejectedValue(new Error("Failed to fetch")),
+      copy: vi.fn().mockRejectedValue(new Error("剪贴板被浏览器拒绝")),
     });
-    const button = document.querySelector<HTMLButtonElement>("button");
+    const button = document.querySelector<HTMLButtonElement>("button")!;
 
-    button?.click();
-    await vi.waitFor(() => expect(button?.textContent).toBe("重试"));
+    button.click();
+    await vi.waitFor(() => expect(button.textContent).toBe("重试"));
 
-    expect(button?.title).toBe("Failed to fetch");
+    expect(button.title).toBe("剪贴板被浏览器拒绝");
+    expect(button.disabled).toBe(false);
     dispose();
   });
 });

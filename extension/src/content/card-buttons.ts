@@ -1,10 +1,11 @@
 import type { CandidateDraft } from "../contracts/candidate";
+import { candidateToClipboardRow } from "../export/clipboard-row";
 
 type Options = {
   root: Document;
   findCards: (root: ParentNode) => HTMLElement[];
   parseCard: (card: HTMLElement) => CandidateDraft | null;
-  capture: (draft: CandidateDraft) => Promise<void>;
+  copy: (text: string) => Promise<void>;
 };
 
 const BUTTON_ATTRIBUTE = "data-candidate-collector-button";
@@ -16,7 +17,7 @@ export function installCardButtons(options: Options): () => void {
       const button = document.createElement("button");
       button.type = "button";
       button.setAttribute(BUTTON_ATTRIBUTE, "true");
-      button.textContent = "加入待办";
+      button.textContent = "复制候选人";
       button.style.cssText =
         "margin:6px;padding:4px 10px;border:1px solid #1677ff;border-radius:4px;" +
         "background:#1677ff;color:white;cursor:pointer;z-index:2147483647";
@@ -50,15 +51,16 @@ async function captureCard(
     button.disabled = true;
     return;
   }
-  button.textContent = "加入中…";
+  button.textContent = "复制中…";
   button.title = "";
   button.disabled = true;
   try {
-    await options.capture(draft);
-    button.textContent = "已加入";
+    await options.copy(candidateToClipboardRow(draft));
+    button.textContent = "已复制";
+    button.disabled = false;
   } catch (error: unknown) {
     button.textContent = "重试";
-    button.title = error instanceof Error ? error.message : "本地助手请求失败";
+    button.title = error instanceof Error ? error.message : "无法写入剪贴板";
     button.disabled = false;
   }
 }
